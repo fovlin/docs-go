@@ -53,14 +53,32 @@ func (app *App) findPageBySource(relative string) *Page {
 }
 
 func (app *App) findSource(candidates []string) *Page {
-	for _, relative := range candidates {
-		absolute := filepath.Join(app.SrcDir, filepath.FromSlash(relative))
+	key := strings.Join(candidates, "\x00")
+
+	app.lookupMu.Lock()
+	relative, cached := app.sourceCache[key]
+	app.lookupMu.Unlock()
+	if cached {
+		if relative == "" {
+			return nil
+		}
+		page, _ := app.loadPage(relative)
+		return page
+	}
+
+	for _, candidate := range candidates {
+		absolute := filepath.Join(app.SrcDir, filepath.FromSlash(candidate))
 		if info, err := os.Stat(absolute); err == nil && !info.IsDir() {
-			if page, err := app.loadPage(relative); err == nil {
-				return page
-			}
+			app.lookupMu.Lock()
+			app.sourceCache[key] = candidate
+			app.lookupMu.Unlock()
+			page, _ := app.loadPage(candidate)
+			return page
 		}
 	}
 
+	app.lookupMu.Lock()
+	app.sourceCache[key] = ""
+	app.lookupMu.Unlock()
 	return nil
 }

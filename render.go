@@ -173,13 +173,26 @@ func (app *App) assetExists(sitePath string) bool {
 		return false
 	}
 
+	app.lookupMu.Lock()
+	exists, cached := app.assetCache[relative]
+	app.lookupMu.Unlock()
+	if cached {
+		return exists
+	}
+
 	for _, directory := range []string{app.SrcDir, app.PublicDir} {
 		info, err := os.Stat(filepath.Join(directory, filepath.FromSlash(relative)))
 		if err == nil && !info.IsDir() {
+			app.lookupMu.Lock()
+			app.assetCache[relative] = true
+			app.lookupMu.Unlock()
 			return true
 		}
 	}
 
+	app.lookupMu.Lock()
+	app.assetCache[relative] = false
+	app.lookupMu.Unlock()
 	return false
 }
 

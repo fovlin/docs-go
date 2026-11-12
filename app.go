@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
 )
 
 // App is one immutable snapshot of a docs project. Everything a render needs
@@ -31,6 +32,12 @@ type App struct {
 	Bootstrap    string
 
 	Titles *TitleCache
+
+	NavTitles map[string]string
+
+	lookupMu    sync.Mutex
+	sourceCache map[string]string
+	assetCache  map[string]bool
 }
 
 // LoadApp reads one coherent project snapshot. The returned App is fully
@@ -56,6 +63,9 @@ func LoadApp(projectRoot, configFile, srcFlag, outFlag string) (*App, error) {
 		PublicDir:   resolveConfigPath(absoluteRoot, loaded.PublicDir),
 		SidebarPath: resolveConfigPath(absoluteRoot, loaded.SidebarFile),
 		Titles:      newTitleCache(),
+		NavTitles:   make(map[string]string),
+		sourceCache: make(map[string]string),
+		assetCache:  make(map[string]bool),
 	}
 
 	info, err := os.Stat(app.SrcDir)
