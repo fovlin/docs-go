@@ -105,3 +105,51 @@ func TestDevFailedReloadKeepsPreviousSnapshot(t *testing.T) {
 		t.Fatalf("reloaded title = %q", fixed.Title)
 	}
 }
+
+func TestDevCacheResetSeesNewSource(t *testing.T) {
+	root := t.TempDir()
+	writeTestProject(t, root)
+	app, err := LoadApp(root, "docs.json", "", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if page := app.findPageByURL("/guide/later"); page != nil {
+		t.Fatal("unexpected page before creation")
+	}
+
+	writeFile(t, filepath.Join(root, "docs", "guide", "later.md"), "# Later\n")
+	app.clearLookups()
+
+	if page := app.findPageByURL("/guide/later"); page == nil {
+		t.Fatal("new source stayed cached as missing")
+	}
+}
+
+func TestPrevNextTitleTracksSource(t *testing.T) {
+	root := t.TempDir()
+	writeTestProject(t, root)
+	app, err := LoadApp(root, "docs.json", "", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	next := app.findPageByURL("/guide/next")
+	html, err := app.renderPageHTML(next)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(html), `prev-next-title">Start`) {
+		t.Fatal("initial prev title missing")
+	}
+
+	writeFile(t, filepath.Join(root, "docs", "guide", "start.md"), "# Changed\n\nBody.\n")
+	next = app.findPageByURL("/guide/next")
+	html, err = app.renderPageHTML(next)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(html), `prev-next-title">Changed`) {
+		t.Fatal("prev title did not follow the edited source")
+	}
+}

@@ -33,9 +33,8 @@ func (app *App) buildURLTab() error {
 
 func (app *App) addURLInfos(table map[string]NavInfo, parent string, items []SidebarItem) error {
 	type entry struct {
-		url   string
-		href  string
-		title string
+		url  string
+		href string
 	}
 
 	seen := make(map[string]bool)
@@ -54,9 +53,8 @@ func (app *App) addURLInfos(table map[string]NavInfo, parent string, items []Sid
 
 						seen[page.URL] = true
 						entries = append(entries, entry{
-							url:   page.URL,
-							href:  page.Href,
-							title: app.titleFor(page),
+							url:  page.URL,
+							href: page.Href,
 						})
 					}
 				}
@@ -87,7 +85,6 @@ func (app *App) addURLInfos(table map[string]NavInfo, parent string, items []Sid
 			return fmt.Errorf("page %s appears in more than one sidebar route", entry.url)
 		}
 		table[entry.url] = info
-		app.NavTitles[entry.href] = entry.title
 	}
 
 	return nil
@@ -107,13 +104,6 @@ func (app *App) lookupURLInfo(pageURL string) (NavInfo, bool) {
 	return info, ok
 }
 
-func (app *App) navTitle(href string) string {
-	if title := app.NavTitles[href]; title != "" {
-		return title
-	}
-	return app.titleForHref(href)
-}
-
 func (app *App) applyNavigation(state *RenderState, page *Page) {
 	info, ok := app.lookupURLInfo(page.URL)
 	if !ok {
@@ -121,9 +111,9 @@ func (app *App) applyNavigation(state *RenderState, page *Page) {
 	}
 
 	if info.PrevHref != "" {
-		state.Prev = &PageLink{Text: app.navTitle(info.PrevHref), Href: info.PrevHref}
+		state.Prev = &PageLink{Text: app.titleForHref(info.PrevHref), Href: info.PrevHref}
 	}
 	if info.NextHref != "" {
-		state.Next = &PageLink{Text: app.navTitle(info.NextHref), Href: info.NextHref}
+		state.Next = &PageLink{Text: app.titleForHref(info.NextHref), Href: info.NextHref}
 	}
 }

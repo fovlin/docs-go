@@ -73,6 +73,7 @@ func (dev *Dev) handle(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	app.clearLookups()
 	app.serveDev(w, r)
 }
 
