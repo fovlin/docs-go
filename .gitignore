@@ -1,0 +1,6 @@
+dist/
+build/
+.tmp/
+docs-go
+docs-go.exe
+.DS_Store

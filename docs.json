@@ -1,0 +1,28 @@
+{
+  "title": "docs-go",
+  "description": "A small, plain static documentation generator written in Go, in the spirit of VitePress.",
+  "lang": "en",
+  "base": "/",
+  "src_dir": "docs",
+  "out_dir": "dist",
+  "public_dir": "public",
+  "clean_urls": true,
+  "sidebar_file": "sidebar.json",
+  "nav": [
+    { "text": "Guide", "link": "/guide/" },
+    { "text": "Reference", "link": "/reference/cli" }
+  ],
+  "social_links": [
+    { "icon": "github", "link": "https://github.com/fovlin/docs-go", "label": "GitHub" }
+  ],
+  "footer": {
+    "message": "Released under the GNU General Public License v3.",
+    "copyright": "Copyright © {year} docs-go contributors"
+  },
+  "outline": {
+    "label": "On this page",
+    "level": [2, 3]
+  },
+  "prev_next": true,
+  "last_updated": true
+}
