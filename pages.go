@@ -7,14 +7,14 @@ import (
 	"strings"
 )
 
-func findPageByURL(target string) *Page {
+func (app *App) findPageByURL(target string) *Page {
 	target = canonicalURL(target)
 	trailing := strings.HasSuffix(target, "/")
 	relative := strings.TrimSuffix(strings.TrimPrefix(target, "/"), ".html")
 	relative = strings.TrimSuffix(relative, "/")
 
 	if relative == "" || relative == "index" {
-		return findSource([]string{"index.md", "index.markdown"})
+		return app.findSource([]string{"index.md", "index.markdown"})
 	}
 
 	candidates := make([]string, 0, 4)
@@ -28,14 +28,14 @@ func findPageByURL(target string) *Page {
 		candidates = append(candidates, relative+"/index.md", relative+"/index.markdown")
 	}
 
-	return findSource(candidates)
+	return app.findSource(candidates)
 }
 
-func findPageBySource(relative string) *Page {
+func (app *App) findPageBySource(relative string) *Page {
 	relative = strings.TrimPrefix(path.Clean("/"+relative), "/")
 
 	if isMarkdownPath(relative) {
-		if page, err := loadPage(relative); err == nil {
+		if page, err := app.loadPage(relative); err == nil {
 			return page
 		}
 	}
@@ -44,7 +44,7 @@ func findPageBySource(relative string) *Page {
 		relative = strings.TrimSuffix(relative, "/") + "/index"
 	}
 
-	return findSource([]string{
+	return app.findSource([]string{
 		relative + ".md",
 		relative + ".markdown",
 		relative + "/index.md",
@@ -52,11 +52,11 @@ func findPageBySource(relative string) *Page {
 	})
 }
 
-func findSource(candidates []string) *Page {
+func (app *App) findSource(candidates []string) *Page {
 	for _, relative := range candidates {
-		absolute := filepath.Join(srcDir, filepath.FromSlash(relative))
+		absolute := filepath.Join(app.SrcDir, filepath.FromSlash(relative))
 		if info, err := os.Stat(absolute); err == nil && !info.IsDir() {
-			if page, err := loadPage(relative); err == nil {
+			if page, err := app.loadPage(relative); err == nil {
 				return page
 			}
 		}

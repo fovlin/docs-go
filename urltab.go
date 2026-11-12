@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"strings"
-	"sync"
 )
 
 // NavInfo is the previous/next pair for one page.
@@ -12,34 +11,27 @@ type NavInfo struct {
 	NextHref string
 }
 
-var (
-	urlMu  sync.RWMutex
-	urlTab = map[string]NavInfo{}
-)
-
-func buildURLTab() error {
+func (app *App) buildURLTab() error {
 	table := make(map[string]NavInfo)
 
-	if sidebar != nil {
-		if err := addURLInfos(table, "/", sidebar.Global); err != nil {
+	if app.Sidebar != nil {
+		if err := app.addURLInfos(table, "/", app.Sidebar.Global); err != nil {
 			return err
 		}
 
-		for route, items := range sidebar.Sections {
-			if err := addURLInfos(table, route, items); err != nil {
+		for route, items := range app.Sidebar.Sections {
+			if err := app.addURLInfos(table, route, items); err != nil {
 				return err
 			}
 		}
 	}
 
-	urlMu.Lock()
-	urlTab = table
-	urlMu.Unlock()
+	app.URLTab = table
 
 	return nil
 }
 
-func addURLInfos(table map[string]NavInfo, parent string, items []SidebarItem) error {
+func (app *App) addURLInfos(table map[string]NavInfo, parent string, items []SidebarItem) error {
 	type entry struct {
 		url  string
 		href string
@@ -52,9 +44,9 @@ func addURLInfos(table map[string]NavInfo, parent string, items []SidebarItem) e
 	walk = func(items []SidebarItem) error {
 		for _, item := range items {
 			if item.Link != "" {
-				_, target, external := resolveConfigLink(item.Link)
+				_, target, external := app.resolveConfigLink(item.Link)
 				if !external && target != "" {
-					if page := findPageByURL(target); page != nil && !seen[page.URL] {
+					if page := app.findPageByURL(target); page != nil && !seen[page.URL] {
 						if !routeContains(parent, page.URL) {
 							return fmt.Errorf("sidebar %s links to %s outside its route", parent, page.SourcePath)
 						}
@@ -106,25 +98,22 @@ func routeContains(parent string, pageURL string) bool {
 	return sidebarPrefixMatches(parent, pageURL) || strings.TrimSuffix(parent, "/") == pageURL
 }
 
-func lookupURLInfo(pageURL string) (NavInfo, bool) {
-	urlMu.RLock()
-	defer urlMu.RUnlock()
-
-	info, ok := urlTab[pageURL]
+func (app *App) lookupURLInfo(pageURL string) (NavInfo, bool) {
+	info, ok := app.URLTab[pageURL]
 
 	return info, ok
 }
 
-func applyNavigation(state *RenderState, page *Page) {
-	info, ok := lookupURLInfo(page.URL)
+func (app *App) applyNavigation(state *RenderState, page *Page) {
+	info, ok := app.lookupURLInfo(page.URL)
 	if !ok {
 		return
 	}
 
 	if info.PrevHref != "" {
-		state.Prev = &PageLink{Text: titleForHref(info.PrevHref), Href: info.PrevHref}
+		state.Prev = &PageLink{Text: app.titleForHref(info.PrevHref), Href: info.PrevHref}
 	}
 	if info.NextHref != "" {
-		state.Next = &PageLink{Text: titleForHref(info.NextHref), Href: info.NextHref}
+		state.Next = &PageLink{Text: app.titleForHref(info.NextHref), Href: info.NextHref}
 	}
 }

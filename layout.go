@@ -38,11 +38,11 @@ func compileLayout(source string) []layoutPart {
 	}
 }
 
-func renderLayout(parts []layoutPart, page *RenderState) []byte {
+func (app *App) renderLayout(page *RenderState) []byte {
 	values := layoutValues(page)
 
 	var builder strings.Builder
-	for _, part := range parts {
+	for _, part := range app.Layout {
 		if part.name == "" {
 			builder.WriteString(part.text)
 		} else if value, ok := values[part.name]; ok {

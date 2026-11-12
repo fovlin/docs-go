@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-func href(sitePath string) string {
+func (app *App) href(sitePath string) string {
 	if sitePath == "" {
 		sitePath = "/"
 	}
@@ -16,11 +16,11 @@ func href(sitePath string) string {
 	}
 
 	escaped := (&url.URL{Path: sitePath}).EscapedPath()
-	if config.Base == "/" {
+	if app.Base == "/" {
 		return escaped
 	}
 
-	return strings.TrimSuffix(config.Base, "/") + escaped
+	return strings.TrimSuffix(app.Base, "/") + escaped
 }
 
 func canonicalURL(target string) string {
@@ -37,7 +37,9 @@ func canonicalURL(target string) string {
 	return cleaned
 }
 
-func resolveConfigLink(raw string) (string, string, bool) {
+// resolveConfigLink resolves one configured navbar/sidebar link. It is used
+// only while loading an App, never while rendering a page.
+func (app *App) resolveConfigLink(raw string) (string, string, bool) {
 	raw = strings.TrimSpace(raw)
 	if raw == "" {
 		return "", "", false
@@ -58,15 +60,15 @@ func resolveConfigLink(raw string) (string, string, bool) {
 	}
 	target = canonicalURL(target)
 
-	if page := findPageByURL(target); page != nil {
+	if page := app.findPageByURL(target); page != nil {
 		target = page.URL
-	} else if page := findPageBySource(strings.TrimPrefix(target, "/")); page != nil {
+	} else if page := app.findPageBySource(strings.TrimPrefix(target, "/")); page != nil {
 		target = page.URL
 	} else if isMarkdownPath(target) {
-		target = markdownFallbackURL(target, config.CleanURLs)
+		target = markdownFallbackURL(target, app.CleanURLs)
 	}
 
-	return href(target) + urlSuffix(parsed), target, false
+	return app.href(target) + urlSuffix(parsed), target, false
 }
 
 func urlSuffix(parsed *url.URL) string {

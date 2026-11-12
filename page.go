@@ -13,14 +13,15 @@ type PageLink struct {
 	Href string
 }
 
-// Page is the source-backed metadata for one Markdown file.
+// Page is the source-backed metadata for one Markdown file. Heading is the
+// source H1; the display title lives on RenderState.Title.
 type Page struct {
 	SourcePath  string
 	AbsPath     string
 	URL         string
 	Href        string
 	OutPath     string
-	Title       string
+	Heading     string
 	Description string
 	ModTime     time.Time
 }
@@ -106,8 +107,8 @@ func humanizeTitle(sourcePath string) string {
 	return string(runes)
 }
 
-func loadPage(relative string) (*Page, error) {
-	absolute := filepath.Join(srcDir, filepath.FromSlash(relative))
+func (app *App) loadPage(relative string) (*Page, error) {
+	absolute := filepath.Join(app.SrcDir, filepath.FromSlash(relative))
 	info, err := os.Stat(absolute)
 	if err != nil {
 		return nil, err
@@ -116,11 +117,11 @@ func loadPage(relative string) (*Page, error) {
 	page := &Page{
 		SourcePath: relative,
 		AbsPath:    absolute,
-		URL:        pageURL(relative, config.CleanURLs),
+		URL:        pageURL(relative, app.CleanURLs),
 		OutPath:    pageOutPath(relative),
 		ModTime:    info.ModTime(),
 	}
-	page.Href = href(page.URL)
+	page.Href = app.href(page.URL)
 
 	return page, nil
 }

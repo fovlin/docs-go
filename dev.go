@@ -11,22 +11,53 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 )
 
-var (
-	devMu        sync.Mutex
-	configStamp  string
-	sidebarStamp string
-)
+// Dev serves one immutable App snapshot per request. Config and sidebar
+// changes are detected with a cheap stat and swapped atomically; pages are
+// always re-read from source.
+type Dev struct {
+	app      atomic.Pointer[App]
+	reloadMu sync.Mutex
+	stamps   atomic.Pointer[devStamps]
 
-func runDev(addr string, port int) error {
-	configStamp = fileStamp(configPath)
-	sidebarStamp = fileStamp(sidebarPath)
+	root       string
+	configFile string
+	srcFlag    string
+	outFlag    string
+}
 
+type devStamps struct {
+	config  string
+	sidebar string
+}
+
+func runDev(app *App, addr string, port int) error {
+	return newDev(app, configFile, srcFlag, outFlag).run(addr, port)
+}
+
+func newDev(app *App, configFile, srcFlag, outFlag string) *Dev {
+	dev := &Dev{
+		root:       app.Root,
+		configFile: configFile,
+		srcFlag:    srcFlag,
+		outFlag:    outFlag,
+	}
+	dev.app.Store(app)
+	dev.stamps.Store(&devStamps{
+		config:  fileStamp(app.ConfigPath),
+		sidebar: fileStamp(app.SidebarPath),
+	})
+
+	return dev
+}
+
+func (dev *Dev) run(addr string, port int) error {
 	server := &http.Server{
 		Addr:              net.JoinHostPort(addr, strconv.Itoa(port)),
-		Handler:           http.HandlerFunc(handleDev),
+		Handler:           http.HandlerFunc(dev.handle),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 
@@ -35,14 +66,67 @@ func runDev(addr string, port int) error {
 	return server.ListenAndServe()
 }
 
-func handleDev(w http.ResponseWriter, r *http.Request) {
-	devMu.Lock()
-	defer devMu.Unlock()
+func (dev *Dev) handle(w http.ResponseWriter, r *http.Request) {
+	app := dev.snapshot()
+	if app == nil {
+		http.Error(w, "no project snapshot", http.StatusInternalServerError)
+		return
+	}
 
-	refreshProject()
+	app.serveDev(w, r)
+}
 
-	sitePath := strings.TrimPrefix(r.URL.Path, config.Base)
-	if sitePath == r.URL.Path && config.Base != "/" {
+// snapshot returns the current App. It reloads when the config or sidebar file
+// changed and keeps the previous snapshot if the reload fails.
+func (dev *Dev) snapshot() *App {
+	app := dev.app.Load()
+	if app == nil {
+		return nil
+	}
+
+	stamps := dev.stamps.Load()
+	configStamp := fileStamp(app.ConfigPath)
+	sidebarStamp := fileStamp(app.SidebarPath)
+	if stamps != nil && configStamp == stamps.config && sidebarStamp == stamps.sidebar {
+		return app
+	}
+
+	dev.reloadMu.Lock()
+	defer dev.reloadMu.Unlock()
+
+	app = dev.app.Load()
+	if app == nil {
+		return nil
+	}
+
+	stamps = dev.stamps.Load()
+	configStamp = fileStamp(app.ConfigPath)
+	sidebarStamp = fileStamp(app.SidebarPath)
+	if stamps != nil && configStamp == stamps.config && sidebarStamp == stamps.sidebar {
+		return app
+	}
+
+	reloaded, err := LoadApp(dev.root, dev.configFile, dev.srcFlag, dev.outFlag)
+	if err != nil {
+		logWarn("reload: %v", err)
+		// Remember the failed stamps so an unchanged broken config is not
+		// retried on every request; any later edit triggers a reload again.
+		dev.stamps.Store(&devStamps{config: configStamp, sidebar: sidebarStamp})
+		return app
+	}
+
+	dev.app.Store(reloaded)
+	dev.stamps.Store(&devStamps{
+		config:  fileStamp(reloaded.ConfigPath),
+		sidebar: fileStamp(reloaded.SidebarPath),
+	})
+
+	return reloaded
+}
+
+func (app *App) serveDev(w http.ResponseWriter, r *http.Request) {
+	sitePath := strings.TrimPrefix(r.URL.Path, app.Base)
+	if sitePath == r.URL.Path && app.Base != "/" {
 		http.NotFound(w, r)
 		return
 	}
@@ -52,13 +136,13 @@ func handleDev(w http.ResponseWriter, r *http.Request) {
 
 	switch {
 	case sitePath == "/favicon.ico":
-		serveBytes(w, r, "favicon.ico", favicon)
+		serveBytes(w, r, "favicon.ico", app.Favicon)
 		return
 	case strings.HasPrefix(sitePath, "/assets/"):
 		serveThemeAsset(w, r, strings.TrimPrefix(sitePath, "/assets/"))
 		return
-	case sitePath == "/sitemap.xml" && config.Sitemap:
-		document, err := sitemapBytes()
+	case sitePath == "/sitemap.xml" && app.Sitemap:
+		document, err := app.sitemapBytes()
 		if err != nil {
 			http.Error(w, "internal server error", http.StatusInternalServerError)
 			return
@@ -67,13 +151,13 @@ func handleDev(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if page := findPageByURL(sitePath); page != nil {
+	if page := app.findPageByURL(sitePath); page != nil {
 		if page.URL != "/" && strings.HasSuffix(page.URL, "/") && !strings.HasSuffix(r.URL.Path, "/") {
 			http.Redirect(w, r, r.URL.Path+"/", http.StatusMovedPermanently)
 			return
 		}
 
-		document, err := renderPageHTML(page)
+		document, err := app.renderPageHTML(page)
 		if err != nil {
 			logError("render %s: %v", page.SourcePath, err)
 			http.Error(w, "internal server error", http.StatusInternalServerError)
@@ -83,28 +167,12 @@ func handleDev(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if serveAsset(w, r, sitePath) {
+	if app.serveAsset(w, r, sitePath) {
 		return
 	}
 
 	w.WriteHeader(http.StatusNotFound)
-	serveBytes(w, r, "404.html", renderLayout(layout, notFoundPage()))
-}
-
-func refreshProject() {
-	nextConfig := fileStamp(configPath)
-	nextSidebar := fileStamp(sidebarPath)
-	if nextConfig == configStamp && nextSidebar == sidebarStamp {
-		return
-	}
-
-	if err := loadProject(root); err != nil {
-		logWarn("reload: %v", err)
-		return
-	}
-
-	configStamp = nextConfig
-	sidebarStamp = nextSidebar
+	serveBytes(w, r, "404.html", app.renderLayout(app.notFoundPage()))
 }
 
 func fileStamp(name string) string {
@@ -131,13 +199,13 @@ func serveThemeAsset(w http.ResponseWriter, r *http.Request, name string) {
 	serveBytes(w, r, name, data)
 }
 
-func serveAsset(w http.ResponseWriter, r *http.Request, sitePath string) bool {
+func (app *App) serveAsset(w http.ResponseWriter, r *http.Request, sitePath string) bool {
 	relative := strings.TrimPrefix(sitePath, "/")
 	if relative == "" {
 		return false
 	}
 
-	for _, directory := range []string{srcDir, publicDir} {
+	for _, directory := range []string{app.SrcDir, app.PublicDir} {
 		target := filepath.Join(directory, filepath.FromSlash(relative))
 		if !isInside(directory, target) {
 			continue

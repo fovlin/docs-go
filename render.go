@@ -11,89 +11,89 @@ import (
 	"time"
 )
 
-func parsePage(page *Page) (*parsedMarkdown, error) {
+func (app *App) parsePage(page *Page) (*parsedMarkdown, error) {
 	data, err := os.ReadFile(page.AbsPath)
 	if err != nil {
 		return nil, fmt.Errorf("read %s: %w", page.SourcePath, err)
 	}
 
-	return parseMarkdown(data, config)
+	return parseMarkdown(data, app.Config)
 }
 
-func renderPageHTML(page *Page) ([]byte, error) {
-	parsed, err := parsePage(page)
+func (app *App) renderPageHTML(page *Page) ([]byte, error) {
+	parsed, err := app.parsePage(page)
 	if err != nil {
 		return nil, err
 	}
 
-	page.Title = parsed.FirstH1
-	if page.Title == "" {
-		page.Title = humanizeTitle(page.SourcePath)
+	page.Heading = parsed.FirstH1
+	if page.Heading == "" {
+		page.Heading = humanizeTitle(page.SourcePath)
 	}
 	page.Description = truncateRunes(strings.TrimSpace(parsed.FirstParagraph), 160)
 	if page.Description == "" {
-		page.Description = config.Description
+		page.Description = app.Description
 	}
 
 	state := &RenderState{Page: page}
-	applyNavigation(state, page)
+	app.applyNavigation(state, page)
 	state.Body = string(renderMarkdown(parsed, func(destination string, image bool) string {
-		return resolveDestination(page, destination, image)
+		return app.resolveDestination(page, destination, image)
 	}))
-	state.Outline = filterOutline(parsed.Headings, config.Outline.Level)
-	state.Nav = buildNav(page)
-	state.Sidebar = buildSidebar(page)
-	state.EditURL = editURL(page)
-	state.LastUpdated = lastUpdated(page)
-	fillPageChrome(state)
+	state.Outline = filterOutline(parsed.Headings, app.Outline.Level)
+	state.Nav = app.navFor(page.URL)
+	state.Sidebar = app.sidebarFor(page.URL)
+	state.EditURL = app.editURL(page)
+	state.LastUpdated = app.lastUpdated(page)
+	app.fillPageChrome(state)
 
-	return renderLayout(layout, state), nil
+	return app.renderLayout(state), nil
 }
 
-func renderPage(page *Page) error {
-	document, err := renderPageHTML(page)
+func (app *App) renderPage(page *Page) error {
+	document, err := app.renderPageHTML(page)
 	if err != nil {
 		return err
 	}
 
-	return writeOutputFile(outDir, page.OutPath, document)
+	return app.writeOutputFile(page.OutPath, document)
 }
 
-func fillPageChrome(state *RenderState) {
-	title := state.Page.Title
+func (app *App) fillPageChrome(state *RenderState) {
+	title := state.Page.Heading
 	if state.URL == "/" {
-		title = config.Title
-	} else if !strings.EqualFold(title, config.Title) {
-		title += " | " + config.Title
+		title = app.Title
+	} else if !strings.EqualFold(title, app.Title) {
+		title += " | " + app.Title
 	}
 
-	state.Config = config
-	state.UI = config.UI
+	state.Config = app.Config
+	state.UI = app.UI
 	state.Title = title
-	state.Lang = config.Lang
-	state.Appearance = config.Appearance
-	state.HomeURL = href("/")
-	state.StyleURL = href("/assets/style.css") + "?v=" + assetVersion
-	state.InitURL = href("/assets/init.js") + "?v=" + assetVersion
-	state.AppURL = href("/assets/app.js") + "?v=" + assetVersion
-	state.FaviconURL = href("/favicon.ico") + "?v=" + assetVersion
-	state.LogoURL = publicURL(config.Logo)
-	state.PrevText = config.PrevText
-	state.NextText = config.NextText
-	state.FooterMessage = config.Footer.Message
-	state.FooterCopyright = strings.ReplaceAll(config.Footer.Copyright, "{year}", fmt.Sprint(time.Now().Year()))
-	state.Bootstrap = bootstrap
+	state.Lang = app.Lang
+	state.Appearance = app.Appearance
+	state.HomeURL = app.href("/")
+	state.StyleURL = app.href("/assets/style.css") + "?v=" + app.AssetVersion
+	state.InitURL = app.href("/assets/init.js") + "?v=" + app.AssetVersion
+	state.AppURL = app.href("/assets/app.js") + "?v=" + app.AssetVersion
+	state.FaviconURL = app.href("/favicon.ico") + "?v=" + app.AssetVersion
+	state.LogoURL = app.publicURL(app.Logo)
+	state.PrevText = app.PrevText
+	state.NextText = app.NextText
+	state.FooterMessage = app.Footer.Message
+	state.FooterCopyright = strings.ReplaceAll(app.Footer.Copyright, "{year}", fmt.Sprint(time.Now().Year()))
+	state.Bootstrap = app.Bootstrap
 	state.Version = version
 
-	if config.SiteURL != "" {
-		state.Canonical = config.SiteURL + state.Href
+	if app.SiteURL != "" {
+		state.Canonical = app.SiteURL + state.Href
 	}
-	if config.Favicon != "" {
-		state.FaviconURL = publicURL(config.Favicon)
+	if app.Config.Favicon != "" {
+		state.FaviconURL = app.publicURL(app.Config.Favicon)
 	}
 }
 
-func publicURL(value string) string {
+func (app *App) publicURL(value string) string {
 	value = strings.TrimSpace(value)
 	if value == "" {
 		return ""
@@ -107,29 +107,29 @@ func publicURL(value string) string {
 		value = "/" + value
 	}
 
-	return href(value)
+	return app.href(value)
 }
 
-func editURL(page *Page) string {
-	if strings.TrimSpace(config.EditLink) == "" {
+func (app *App) editURL(page *Page) string {
+	if strings.TrimSpace(app.EditLink) == "" {
 		return ""
 	}
 
-	result := strings.ReplaceAll(config.EditLink, ":path", page.SourcePath)
-	result = strings.ReplaceAll(result, ":url", strings.TrimPrefix(href(page.URL), config.Base))
+	result := strings.ReplaceAll(app.EditLink, ":path", page.SourcePath)
+	result = strings.ReplaceAll(result, ":url", strings.TrimPrefix(app.href(page.URL), app.Base))
 
 	return result
 }
 
-func lastUpdated(page *Page) string {
-	if !config.LastUpdated || page.ModTime.IsZero() {
+func (app *App) lastUpdated(page *Page) string {
+	if !app.LastUpdated || page.ModTime.IsZero() {
 		return ""
 	}
 
 	return page.ModTime.Format("2006-01-02")
 }
 
-func resolveDestination(page *Page, raw string, image bool) string {
+func (app *App) resolveDestination(page *Page, raw string, image bool) string {
 	parsed, err := url.Parse(raw)
 	if err != nil {
 		return raw
@@ -150,30 +150,30 @@ func resolveDestination(page *Page, raw string, image bool) string {
 	target = canonicalURL(target)
 
 	if isMarkdownPath(target) {
-		if linked := findPageBySource(strings.TrimPrefix(target, "/")); linked != nil {
+		if linked := app.findPageBySource(strings.TrimPrefix(target, "/")); linked != nil {
 			target = linked.URL
 		} else {
 			logWarn("%s links to a page that does not exist: %s", page.SourcePath, parsed.Path)
-			target = markdownFallbackURL(target, config.CleanURLs)
+			target = markdownFallbackURL(target, app.CleanURLs)
 		}
 	} else if !image {
-		if linked := findPageByURL(target); linked != nil {
+		if linked := app.findPageByURL(target); linked != nil {
 			target = linked.URL
 		}
-	} else if !assetExists(target) {
+	} else if !app.assetExists(target) {
 		logWarn("%s references an image that does not exist: %s", page.SourcePath, parsed.Path)
 	}
 
-	return href(target) + urlSuffix(parsed)
+	return app.href(target) + urlSuffix(parsed)
 }
 
-func assetExists(sitePath string) bool {
+func (app *App) assetExists(sitePath string) bool {
 	relative := strings.TrimPrefix(sitePath, "/")
 	if relative == "" {
 		return false
 	}
 
-	for _, directory := range []string{srcDir, publicDir} {
+	for _, directory := range []string{app.SrcDir, app.PublicDir} {
 		info, err := os.Stat(filepath.Join(directory, filepath.FromSlash(relative)))
 		if err == nil && !info.IsDir() {
 			return true
@@ -230,21 +230,21 @@ func truncateRunes(value string, limit int) string {
 	return string(runes[:limit])
 }
 
-func notFoundPage() *RenderState {
+func (app *App) notFoundPage() *RenderState {
 	state := &RenderState{Page: &Page{
-		Title: config.UI.NotFoundTitle,
-		URL:   "/404",
-		Href:  href("/404"),
+		Heading: app.UI.NotFoundTitle,
+		URL:     "/404",
+		Href:    app.href("/404"),
 	}, Body: `<div class="not-found">` +
 		`<p class="not-found-code">404</p>` +
-		`<h1>` + html.EscapeString(config.UI.NotFoundTitle) + `</h1>` +
-		`<p>` + html.EscapeString(config.UI.NotFoundText) + `</p>` +
-		`<p><a class="btn btn-primary" href="` + html.EscapeString(href("/")) + `">` + html.EscapeString(config.UI.BackHome) + `</a></p>` +
+		`<h1>` + html.EscapeString(app.UI.NotFoundTitle) + `</h1>` +
+		`<p>` + html.EscapeString(app.UI.NotFoundText) + `</p>` +
+		`<p><a class="btn btn-primary" href="` + html.EscapeString(app.href("/")) + `">` + html.EscapeString(app.UI.BackHome) + `</a></p>` +
 		`</div>`,
 	}
 
-	fillPageChrome(state)
-	state.Title = config.UI.NotFoundTitle + " | " + config.Title
+	app.fillPageChrome(state)
+	state.Title = app.UI.NotFoundTitle + " | " + app.Title
 	state.Nav = nil
 	state.Sidebar = nil
 

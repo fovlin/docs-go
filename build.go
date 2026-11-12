@@ -13,65 +13,67 @@ import (
 	"time"
 )
 
-func runBuild() error {
-	if err := validateOutput(outDir); err != nil {
+func runBuild(app *App) error {
+	start := time.Now()
+
+	if err := app.validateOutput(); err != nil {
 		return err
 	}
 
-	if err := os.RemoveAll(outDir); err != nil {
+	if err := os.RemoveAll(app.OutDir); err != nil {
 		return fmt.Errorf("clear output directory: %w", err)
 	}
 
-	if err := os.MkdirAll(outDir, 0o755); err != nil {
+	if err := os.MkdirAll(app.OutDir, 0o755); err != nil {
 		return fmt.Errorf("create output directory: %w", err)
 	}
 
-	if err := copyTree(srcDir, outDir, true); err != nil {
+	if err := app.copyTree(app.SrcDir, app.OutDir, true); err != nil {
 		return fmt.Errorf("copy source assets: %w", err)
 	}
 
-	if err := writeThemeAssets(); err != nil {
+	if err := app.writeThemeAssets(); err != nil {
 		return err
 	}
 
-	if err := os.WriteFile(filepath.Join(outDir, "favicon.ico"), favicon, 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(app.OutDir, "favicon.ico"), app.Favicon, 0o644); err != nil {
 		return fmt.Errorf("write favicon: %w", err)
 	}
 
-	count, err := writePages()
+	count, err := app.writePages()
 	if err != nil {
 		return err
 	}
 
-	notFound := notFoundPage()
-	document := renderLayout(layout, notFound)
-	if err := writeOutputFile(outDir, "404.html", document); err != nil {
+	notFound := app.notFoundPage()
+	document := app.renderLayout(notFound)
+	if err := app.writeOutputFile("404.html", document); err != nil {
 		return fmt.Errorf("write 404 page: %w", err)
 	}
 
-	if config.Sitemap {
-		if err := writeSitemap(); err != nil {
+	if app.Sitemap {
+		if err := app.writeSitemap(); err != nil {
 			return err
 		}
 	}
 
-	if _, err := os.Stat(publicDir); err == nil {
-		if err := copyTree(publicDir, outDir, false); err != nil {
+	if _, err := os.Stat(app.PublicDir); err == nil {
+		if err := app.copyTree(app.PublicDir, app.OutDir, false); err != nil {
 			return fmt.Errorf("copy public directory: %w", err)
 		}
 	}
 
-	logInfo("built %d pages in %s", count, time.Since(buildStart).Round(time.Millisecond))
-	logInfo("output: %s", outDir)
+	logInfo("built %d pages in %s", count, time.Since(start).Round(time.Millisecond))
+	logInfo("output: %s", app.OutDir)
 
 	return nil
 }
 
-func writePages() (int, error) {
+func (app *App) writePages() (int, error) {
 	count := 0
 
-	err := walkPages(func(page *Page) error {
-		if err := renderPage(page); err != nil {
+	err := app.walkPages(func(page *Page) error {
+		if err := app.renderPage(page); err != nil {
 			return fmt.Errorf("render %s: %w", page.SourcePath, err)
 		}
 
@@ -82,14 +84,14 @@ func writePages() (int, error) {
 	return count, err
 }
 
-func walkPages(visit func(*Page) error) error {
-	err := filepath.WalkDir(srcDir, func(current string, entry fs.DirEntry, err error) error {
+func (app *App) walkPages(visit func(*Page) error) error {
+	err := filepath.WalkDir(app.SrcDir, func(current string, entry fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
 
 		if entry.IsDir() {
-			if current == srcDir {
+			if current == app.SrcDir {
 				return nil
 			}
 
@@ -105,13 +107,13 @@ func walkPages(visit func(*Page) error) error {
 			return nil
 		}
 
-		relative, err := filepath.Rel(srcDir, current)
+		relative, err := filepath.Rel(app.SrcDir, current)
 		if err != nil {
 			return err
 		}
 		relative = filepath.ToSlash(relative)
 
-		page, err := loadPage(relative)
+		page, err := app.loadPage(relative)
 		if err != nil {
 			return fmt.Errorf("read %s: %w", relative, err)
 		}
@@ -122,11 +124,11 @@ func walkPages(visit func(*Page) error) error {
 	return err
 }
 
-func validateOutput(output string) error {
-	output = filepath.Clean(output)
-	root = filepath.Clean(root)
-	srcDir = filepath.Clean(srcDir)
-	publicDir = filepath.Clean(publicDir)
+func (app *App) validateOutput() error {
+	output := filepath.Clean(app.OutDir)
+	root := filepath.Clean(app.Root)
+	srcDir := filepath.Clean(app.SrcDir)
+	publicDir := filepath.Clean(app.PublicDir)
 
 	if output == root || isInside(output, root) {
 		return fmt.Errorf("out_dir must not be the project root or contain it")
@@ -165,8 +167,8 @@ func isInside(parent string, child string) bool {
 	return relative != ".." && !strings.HasPrefix(relative, ".."+string(filepath.Separator))
 }
 
-func writeThemeAssets() error {
-	assets := filepath.Join(outDir, "assets")
+func (app *App) writeThemeAssets() error {
+	assets := filepath.Join(app.OutDir, "assets")
 	if err := os.MkdirAll(assets, 0o755); err != nil {
 		return fmt.Errorf("create asset directory: %w", err)
 	}
@@ -185,25 +187,25 @@ func writeThemeAssets() error {
 	return nil
 }
 
-func themeVersion() string {
+func (app *App) themeVersion() string {
 	hash := sha256.New()
 	for _, name := range []string{"style.css", "app.js", "init.js"} {
 		data, _ := themeFS.ReadFile("theme/" + name)
 		hash.Write(data)
 	}
-	hash.Write(favicon)
+	hash.Write(app.Favicon)
 
 	return hex.EncodeToString(hash.Sum(nil))[:8]
 }
 
-func sitemapBytes() ([]byte, error) {
+func (app *App) sitemapBytes() ([]byte, error) {
 	var builder strings.Builder
 	builder.WriteString(`<?xml version="1.0" encoding="UTF-8"?>` + "\n")
 	builder.WriteString(`<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">` + "\n")
 
-	if err := walkPages(func(page *Page) error {
+	if err := app.walkPages(func(page *Page) error {
 		builder.WriteString("  <url>\n    <loc>")
-		_ = xml.EscapeText(&builder, []byte(config.SiteURL+page.Href))
+		_ = xml.EscapeText(&builder, []byte(app.SiteURL+page.Href))
 		builder.WriteString("</loc>\n")
 		if !page.ModTime.IsZero() {
 			builder.WriteString("    <lastmod>")
@@ -221,21 +223,21 @@ func sitemapBytes() ([]byte, error) {
 	return []byte(builder.String()), nil
 }
 
-func writeSitemap() error {
-	document, err := sitemapBytes()
+func (app *App) writeSitemap() error {
+	document, err := app.sitemapBytes()
 	if err != nil {
 		return err
 	}
 
-	if err := os.WriteFile(filepath.Join(outDir, "sitemap.xml"), document, 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(app.OutDir, "sitemap.xml"), document, 0o644); err != nil {
 		return fmt.Errorf("write sitemap: %w", err)
 	}
 
 	return nil
 }
 
-func writeOutputFile(directory string, relative string, data []byte) error {
-	target := filepath.Join(directory, filepath.FromSlash(relative))
+func (app *App) writeOutputFile(relative string, data []byte) error {
+	target := filepath.Join(app.OutDir, filepath.FromSlash(relative))
 	if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
 		return err
 	}
@@ -243,7 +245,7 @@ func writeOutputFile(directory string, relative string, data []byte) error {
 	return os.WriteFile(target, data, 0o644)
 }
 
-func copyTree(source string, destination string, skipMarkdown bool) error {
+func (app *App) copyTree(source string, destination string, skipMarkdown bool) error {
 	return filepath.WalkDir(source, func(current string, entry fs.DirEntry, err error) error {
 		if err != nil {
 			return err

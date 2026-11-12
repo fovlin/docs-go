@@ -89,23 +89,6 @@ func loadSidebar(file string, base string) (*SidebarConfig, error) {
 	return config, nil
 }
 
-func (sidebar *SidebarConfig) selectFor(pageURL string) []SidebarItem {
-	if sidebar == nil {
-		return nil
-	}
-	if sidebar.Global != nil {
-		return sidebar.Global
-	}
-
-	for _, key := range sidebar.keys {
-		if sidebarPrefixMatches(key, pageURL) {
-			return sidebar.Sections[key]
-		}
-	}
-
-	return nil
-}
-
 func sidebarPrefixMatches(prefix string, pageURL string) bool {
 	if prefix == "/" {
 		return true

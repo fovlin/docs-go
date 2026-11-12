@@ -1,12 +1,9 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
 	"strconv"
-	"time"
 
 	"acovia.net/docs-go/internal/record"
 	"github.com/fovlin/opt"
@@ -15,20 +12,6 @@ import (
 const programName = "docs-go"
 
 var (
-	config      Config
-	sidebar     *SidebarConfig
-	root        string
-	srcDir      string
-	outDir      string
-	publicDir   string
-	sidebarPath string
-	configPath  string
-
-	layout       []layoutPart
-	favicon      []byte
-	assetVersion string
-	bootstrap    string
-
 	configFile string
 	srcFlag    string
 	outFlag    string
@@ -38,7 +21,6 @@ var (
 
 	cmd        string
 	subCmdArgs []string
-	buildStart time.Time
 )
 
 func main() {
@@ -104,13 +86,12 @@ func resolveCommand(args []string) (string, []string) {
 }
 
 func commandBuild() error {
-	buildStart = time.Now()
-
-	if err := loadProject(projectArg()); err != nil {
+	app, err := LoadApp(projectArg(), configFile, srcFlag, outFlag)
+	if err != nil {
 		return err
 	}
 
-	return runBuild()
+	return runBuild(app)
 }
 
 func commandDev() error {
@@ -119,11 +100,12 @@ func commandDev() error {
 		return fmt.Errorf("invalid port: %v", portFlag)
 	}
 
-	if err := loadProject(projectArg()); err != nil {
+	app, err := LoadApp(projectArg(), configFile, srcFlag, outFlag)
+	if err != nil {
 		return err
 	}
 
-	return runDev(addrFlag, port)
+	return runDev(app, addrFlag, port)
 }
 
 func commandInit() error {
@@ -136,68 +118,4 @@ func projectArg() string {
 	}
 
 	return "."
-}
-
-func loadProject(projectRoot string) error {
-	absoluteRoot, err := filepath.Abs(projectRoot)
-	if err != nil {
-		return fmt.Errorf("project root: %w", err)
-	}
-
-	loaded, path, err := loadConfig(absoluteRoot, configFile)
-	if err != nil {
-		return err
-	}
-	applyConfigOverrides(&loaded, srcFlag, outFlag)
-
-	root = absoluteRoot
-	config = loaded
-	configPath = path
-	srcDir = resolveConfigPath(root, config.SrcDir)
-	outDir = resolveConfigPath(root, config.OutDir)
-	publicDir = resolveConfigPath(root, config.PublicDir)
-	sidebarPath = resolveConfigPath(root, config.SidebarFile)
-
-	info, err := os.Stat(srcDir)
-	if err != nil {
-		return fmt.Errorf("source directory %s: %w", srcDir, err)
-	}
-	if !info.IsDir() {
-		return fmt.Errorf("source directory is not a directory: %s", srcDir)
-	}
-
-	sidebar, err = loadSidebar(sidebarPath, config.Base)
-	if err != nil {
-		return err
-	}
-
-	layoutData, err := themeFS.ReadFile("theme/layout.html")
-	if err != nil {
-		return fmt.Errorf("read theme layout: %w", err)
-	}
-	layout = compileLayout(string(layoutData))
-
-	favicon, err = themeFS.ReadFile("theme/favicon.ico")
-	if err != nil {
-		return fmt.Errorf("read theme favicon: %w", err)
-	}
-	assetVersion = themeVersion()
-
-	payload, err := json.Marshal(struct {
-		Base string   `json:"base"`
-		UI   UIConfig `json:"ui"`
-	}{
-		Base: config.Base,
-		UI:   config.UI,
-	})
-	if err != nil {
-		return fmt.Errorf("encode bootstrap: %w", err)
-	}
-	bootstrap = string(payload)
-
-	titlesMu.Lock()
-	titles = make(map[string]titleEntry)
-	titlesMu.Unlock()
-
-	return buildURLTab()
 }

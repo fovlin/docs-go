@@ -12,24 +12,58 @@ type titleEntry struct {
 	size  int64
 }
 
-var (
-	titlesMu sync.RWMutex
-	titles   = map[string]titleEntry{}
-)
+// TitleCache maps absolute source paths to their H1 title. Entries are
+// validated with modtime+size, so an edited file is re-parsed on next lookup.
+type TitleCache struct {
+	mu      sync.RWMutex
+	entries map[string]titleEntry
+}
 
-func pageTitle(sitePath string) string {
-	if page := findPageByURL(sitePath); page != nil {
-		return titleFor(page)
+func newTitleCache() *TitleCache {
+	return &TitleCache{entries: make(map[string]titleEntry)}
+}
+
+func (cache *TitleCache) lookup(absPath string, mod int64, size int64) (string, bool) {
+	if cache == nil {
+		return "", false
 	}
 
-	if page := findPageBySource(strings.TrimPrefix(sitePath, "/")); page != nil {
-		return titleFor(page)
+	cache.mu.RLock()
+	entry, ok := cache.entries[absPath]
+	cache.mu.RUnlock()
+
+	if !ok || entry.mod != mod || entry.size != size {
+		return "", false
+	}
+
+	return entry.title, true
+}
+
+func (cache *TitleCache) store(absPath string, title string, mod int64, size int64) {
+	if cache == nil {
+		return
+	}
+
+	cache.mu.Lock()
+	cache.entries[absPath] = titleEntry{title: title, mod: mod, size: size}
+	cache.mu.Unlock()
+}
+
+// pageTitle resolves the display title for a configured site path. It is used
+// at load time to pre-resolve navbar and sidebar labels.
+func (app *App) pageTitle(sitePath string) string {
+	if page := app.findPageByURL(sitePath); page != nil {
+		return app.titleFor(page)
+	}
+
+	if page := app.findPageBySource(strings.TrimPrefix(sitePath, "/")); page != nil {
+		return app.titleFor(page)
 	}
 
 	return humanizeTitle(strings.TrimSuffix(sitePath, "/"))
 }
 
-func titleFor(page *Page) string {
+func (app *App) titleFor(page *Page) string {
 	info, statErr := os.Stat(page.AbsPath)
 	var mod, size int64
 	if statErr == nil {
@@ -37,16 +71,13 @@ func titleFor(page *Page) string {
 		size = info.Size()
 	}
 
-	titlesMu.RLock()
-	entry, ok := titles[page.AbsPath]
-	titlesMu.RUnlock()
-	if ok && entry.mod == mod && entry.size == size {
-		return entry.title
+	if title, ok := app.Titles.lookup(page.AbsPath, mod, size); ok {
+		return title
 	}
 
 	title := ""
 	if data, err := os.ReadFile(page.AbsPath); err == nil {
-		if parsed, err := parseMarkdown(data, config); err == nil {
+		if parsed, err := parseMarkdown(data, app.Config); err == nil {
 			title = parsed.FirstH1
 		}
 	}
@@ -54,19 +85,17 @@ func titleFor(page *Page) string {
 		title = humanizeTitle(page.SourcePath)
 	}
 
-	titlesMu.Lock()
-	titles[page.AbsPath] = titleEntry{title: title, mod: mod, size: size}
-	titlesMu.Unlock()
+	app.Titles.store(page.AbsPath, title, mod, size)
 	return title
 }
 
-func titleForHref(href string) string {
+func (app *App) titleForHref(href string) string {
 	target := href
-	if config.Base != "/" {
-		target = strings.TrimPrefix(href, strings.TrimSuffix(config.Base, "/"))
+	if app.Base != "/" {
+		target = strings.TrimPrefix(href, strings.TrimSuffix(app.Base, "/"))
 	}
-	if page := findPageByURL(target); page != nil {
-		return titleFor(page)
+	if page := app.findPageByURL(target); page != nil {
+		return app.titleFor(page)
 	}
 	return href
 }
