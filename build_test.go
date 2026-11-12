@@ -273,3 +273,14 @@ func readFile(t *testing.T, name string) string {
 
 	return string(data)
 }
+
+func TestBuildRejectsDuplicateOutput(t *testing.T) {
+	root := t.TempDir()
+	writeTestProject(t, root)
+	writeFile(t, filepath.Join(root, "docs", "guide", "start.markdown"), "# Duplicate\n")
+	app := loadTestProject(t, root)
+
+	if err := runBuild(app); err == nil || !strings.Contains(err.Error(), "both map to") {
+		t.Fatalf("expected duplicate output error, got %v", err)
+	}
+}

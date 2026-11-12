@@ -31,12 +31,8 @@ func (app *App) resolveNav() []*NavLink {
 			External: external,
 		}
 
-		if link.Text == "" {
-			if sitePath != "" {
-				link.Text = app.pageTitle(sitePath)
-			} else {
-				link.Text = item.Link
-			}
+		if link.Text == "" && sitePath == "" {
+			link.Text = item.Link
 		}
 
 		if !external && sitePath != "" && strings.TrimSpace(item.ActiveMatch) != "" {
@@ -59,6 +55,9 @@ func (app *App) navFor(pageURL string) []*NavLink {
 	links := make([]*NavLink, 0, len(app.Nav))
 	for _, link := range app.Nav {
 		clone := *link
+		if clone.Text == "" && clone.Path != "" {
+			clone.Text = app.pageTitle(clone.Path)
+		}
 		if !clone.External && clone.Path != "" {
 			if clone.ActiveMatch != "" {
 				clone.Active = sidebarPrefixMatches(clone.ActiveMatch, pageURL)
@@ -129,10 +128,6 @@ func (app *App) resolveSidebarNode(item SidebarItem) *SidebarNode {
 
 	if item.Link != "" {
 		node.Href, node.Path, node.External = app.resolveConfigLink(item.Link)
-
-		if node.Text == "" && node.Path != "" {
-			node.Text = app.pageTitle(node.Path)
-		}
 	}
 
 	for index := range item.Items {
@@ -143,13 +138,6 @@ func (app *App) resolveSidebarNode(item SidebarItem) *SidebarNode {
 
 	if node.Href == "" && len(node.Items) == 0 {
 		return nil
-	}
-
-	if node.Text == "" && len(node.Items) > 0 {
-		node.Text = node.Items[0].Text
-		if node.Text == "" {
-			node.Text = "Section"
-		}
 	}
 
 	return node
@@ -174,10 +162,10 @@ func (app *App) sidebarFor(pageURL string) []*SidebarNode {
 		}
 	}
 
-	return markSidebar(nodes, pageURL)
+	return app.markSidebar(nodes, pageURL)
 }
 
-func markSidebar(nodes []*SidebarNode, pageURL string) []*SidebarNode {
+func (app *App) markSidebar(nodes []*SidebarNode, pageURL string) []*SidebarNode {
 	if len(nodes) == 0 {
 		return nil
 	}
@@ -185,11 +173,22 @@ func markSidebar(nodes []*SidebarNode, pageURL string) []*SidebarNode {
 	marked := make([]*SidebarNode, 0, len(nodes))
 	for _, node := range nodes {
 		clone := *node
-		clone.Items = markSidebar(node.Items, pageURL)
+		clone.Items = app.markSidebar(node.Items, pageURL)
 
 		clone.Active = node.Path != "" && node.Path == pageURL
 		if !clone.Active && clone.Path != "" && len(clone.Items) > 0 {
 			clone.Active = strings.HasPrefix(pageURL, strings.TrimSuffix(clone.Path, "/")+"/")
+		}
+
+		if clone.Text == "" {
+			if clone.Path != "" {
+				clone.Text = app.pageTitle(clone.Path)
+			} else if len(clone.Items) > 0 {
+				clone.Text = clone.Items[0].Text
+				if clone.Text == "" {
+					clone.Text = "Section"
+				}
+			}
 		}
 
 		clone.HasActive = false

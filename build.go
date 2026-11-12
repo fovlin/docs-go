@@ -71,8 +71,20 @@ func runBuild(app *App) error {
 
 func (app *App) writePages() (int, error) {
 	count := 0
+	seenURL := make(map[string]string)
+	seenOut := make(map[string]string)
 
 	err := app.walkPages(func(page *Page) error {
+		key := strings.ToLower(page.URL)
+		if existing, ok := seenURL[key]; ok {
+			return fmt.Errorf("pages %s and %s both map to %s", existing, page.SourcePath, page.URL)
+		}
+		if existing, ok := seenOut[page.OutPath]; ok {
+			return fmt.Errorf("pages %s and %s both write %s", existing, page.SourcePath, page.OutPath)
+		}
+		seenURL[key] = page.SourcePath
+		seenOut[page.OutPath] = page.SourcePath
+
 		if err := app.renderPage(page); err != nil {
 			return fmt.Errorf("render %s: %w", page.SourcePath, err)
 		}

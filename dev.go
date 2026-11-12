@@ -126,6 +126,11 @@ func (dev *Dev) snapshot() *App {
 }
 
 func (app *App) serveDev(w http.ResponseWriter, r *http.Request) {
+	if app.Base != "/" && r.URL.Path == strings.TrimSuffix(app.Base, "/") {
+		http.Redirect(w, r, app.Base, http.StatusMovedPermanently)
+		return
+	}
+
 	sitePath := strings.TrimPrefix(r.URL.Path, app.Base)
 	if sitePath == r.URL.Path && app.Base != "/" {
 		http.NotFound(w, r)
@@ -154,7 +159,11 @@ func (app *App) serveDev(w http.ResponseWriter, r *http.Request) {
 
 	if page := app.findPageByURL(sitePath); page != nil {
 		if page.URL != "/" && strings.HasSuffix(page.URL, "/") && !strings.HasSuffix(r.URL.Path, "/") {
-			http.Redirect(w, r, r.URL.Path+"/", http.StatusMovedPermanently)
+			target := r.URL.Path + "/"
+			if r.URL.RawQuery != "" {
+				target += "?" + r.URL.RawQuery
+			}
+			http.Redirect(w, r, target, http.StatusMovedPermanently)
 			return
 		}
 

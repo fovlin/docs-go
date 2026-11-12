@@ -153,3 +153,24 @@ func TestPrevNextTitleTracksSource(t *testing.T) {
 		t.Fatal("prev title did not follow the edited source")
 	}
 }
+
+func TestSidebarTitleFollowsEditedSource(t *testing.T) {
+	root := t.TempDir()
+	writeTestProject(t, root)
+	writeFile(t, filepath.Join(root, "sidebar.json"), `{
+		"/guide/": [{ "items": [{ "link": "/guide/start" }] }]
+	}`)
+	app, err := LoadApp(root, "docs.json", "", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if text := app.sidebarFor("/guide/start")[0].Items[0].Text; text != "Start" {
+		t.Fatalf("initial sidebar text = %q", text)
+	}
+
+	writeFile(t, filepath.Join(root, "docs", "guide", "start.md"), "# Changed\n\nBody.\n")
+	if text := app.sidebarFor("/guide/start")[0].Items[0].Text; text != "Changed" {
+		t.Fatalf("sidebar text did not follow source: %q", text)
+	}
+}
