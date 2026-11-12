@@ -323,7 +323,7 @@ func footerText(page *RenderState) string {
 }
 
 func shellClass(page *RenderState) string {
-	if len(page.Sidebar) == 0 && len(page.Nav) == 0 {
+	if len(page.Sidebar) == 0 {
 		return "shell no-sidebar"
 	}
 	return "shell"

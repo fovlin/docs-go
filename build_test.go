@@ -284,3 +284,15 @@ func TestBuildRejectsDuplicateOutput(t *testing.T) {
 		t.Fatalf("expected duplicate output error, got %v", err)
 	}
 }
+
+func TestShellClassDoesNotReserveEmptySidebar(t *testing.T) {
+	state := &RenderState{Page: &Page{}, Nav: []*NavLink{{Text: "Guide"}}}
+	if got := shellClass(state); got != "shell no-sidebar" {
+		t.Fatalf("shell class = %q, want shell no-sidebar", got)
+	}
+
+	state.Sidebar = []*SidebarNode{{Text: "Guide"}}
+	if got := shellClass(state); got != "shell" {
+		t.Fatalf("shell class = %q, want shell", got)
+	}
+}
