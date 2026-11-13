@@ -417,6 +417,26 @@ button {
 .sidebar-group-row.is-toggle:hover {
 	background: var(--surface-2);
 }
+.sidebar-arrow {
+	display: grid;
+	place-items: center;
+	flex: 0 0 auto;
+	width: 24px;
+	height: 24px;
+	color: var(--faint);
+	pointer-events: none;
+}
+
+.sidebar-arrow svg {
+	width: 15px;
+	height: 15px;
+	transition: transform 0.16s ease;
+}
+
+.sidebar-group.is-open .sidebar-arrow svg {
+	transform: rotate(90deg);
+}
+
 
 .sidebar-group-label,
 .sidebar-group-link {

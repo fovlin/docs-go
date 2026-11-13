@@ -232,6 +232,7 @@ func sidebarItems(nodes []*SidebarNode) string {
 			} else {
 				fmt.Fprintf(&b, "<span class=\"sidebar-group-label\">%s</span>\n", escapeHTML(node.Text))
 			}
+			b.WriteString("<span class=\"sidebar-arrow\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"m9 6 6 6-6 6\"/></svg></span>\n")
 			b.WriteString("</div>\n<div class=\"sidebar-group-items\">\n")
 			b.WriteString(sidebarItems(node.Items))
 			b.WriteString("</div>\n</div>\n")
