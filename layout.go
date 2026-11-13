@@ -77,6 +77,8 @@ func layoutValues(page *RenderState) map[string]string {
 		"Brand":            brand(page),
 		"Nav":              navigation(page),
 		"SocialLinks":      socialLinks(page),
+		"PageMenuButton":   pageMenuButton(page),
+		"PageMenu":         pageMenu(page),
 		"ThemeLabel":       escapeHTML(page.UI.Theme),
 		"ShellClass":       shellClass(page),
 		"Sidebar":          sidebarHTML(page),
@@ -303,6 +305,20 @@ func prevNext(page *RenderState) string {
 	return b.String()
 }
 
+func outlineList(page *RenderState) string {
+	if len(page.Outline) == 0 {
+		return ""
+	}
+
+	var b strings.Builder
+	b.WriteString("<ul class=\"outline-list\">\n")
+	for _, heading := range page.Outline {
+		fmt.Fprintf(&b, "<li class=\"outline-item outline-level-%d\"><a href=\"#%s\">%s</a></li>\n", heading.Level, escapeHTML(heading.ID), escapeHTML(heading.Text))
+	}
+	b.WriteString("</ul>\n")
+	return b.String()
+}
+
 func outlineHTML(page *RenderState) string {
 	if len(page.Outline) == 0 {
 		return ""
@@ -310,11 +326,38 @@ func outlineHTML(page *RenderState) string {
 
 	var b strings.Builder
 	b.WriteString("<aside class=\"outline\">\n")
-	fmt.Fprintf(&b, "<p class=\"outline-title\">%s</p>\n<ul class=\"outline-list\">\n", escapeHTML(page.Config.Outline.Label))
-	for _, heading := range page.Outline {
-		fmt.Fprintf(&b, "<li class=\"outline-item level-%d\"><a href=\"#%s\">%s</a></li>\n", heading.Level, escapeHTML(heading.ID), escapeHTML(heading.Text))
+	fmt.Fprintf(&b, "<p class=\"outline-title\">%s</p>\n", escapeHTML(page.Config.Outline.Label))
+	b.WriteString(outlineList(page))
+	b.WriteString("</aside>\n")
+	return b.String()
+}
+
+func pageMenuButton(page *RenderState) string {
+	if len(page.Outline) == 0 && len(page.Config.SocialLinks) == 0 {
+		return ""
 	}
-	b.WriteString("</ul>\n</aside>\n")
+
+	return "<button class=\"icon-btn page-menu-btn\" id=\"page-menu-btn\" type=\"button\" aria-label=\"Page menu\" aria-expanded=\"false\" aria-controls=\"page-menu\">\n<svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\"><path d=\"M4 7h16M4 12h16M4 17h16\"/></svg>\n</button>\n"
+}
+
+func pageMenu(page *RenderState) string {
+	if len(page.Outline) == 0 && len(page.Config.SocialLinks) == 0 {
+		return ""
+	}
+
+	var b strings.Builder
+	b.WriteString("<div class=\"page-menu\" id=\"page-menu\" hidden>\n")
+	if len(page.Outline) > 0 {
+		fmt.Fprintf(&b, "<div class=\"page-menu-section\"><p class=\"page-menu-title\">%s</p>\n", escapeHTML(page.Config.Outline.Label))
+		b.WriteString(outlineList(page))
+		b.WriteString("</div>\n")
+	}
+	if len(page.Config.SocialLinks) > 0 {
+		b.WriteString("<div class=\"page-menu-social\">\n")
+		b.WriteString(socialLinks(page))
+		b.WriteString("</div>\n")
+	}
+	b.WriteString("</div>\n")
 	return b.String()
 }
 

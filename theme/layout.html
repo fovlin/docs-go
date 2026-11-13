@@ -41,9 +41,13 @@
 							<path d="M20 14.5A8.5 8.5 0 0 1 9.5 4 8.5 8.5 0 1 0 20 14.5Z" />
 						</svg>
 					</button>
+					{{ @PageMenuButton }}
 				</div>
+				{{ @PageMenu }}
 			</div>
 		</header>
+
+		<div class="page-menu-backdrop" id="page-menu-backdrop" hidden></div>
 
 		<div class="{{ @ShellClass }}">
 			{{ @Sidebar }}

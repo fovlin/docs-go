@@ -11,6 +11,9 @@
   "nav": [
     { "text": "Guide", "link": "/guide/getting-started" }
   ],
+  "social_links": [
+    { "icon": "github", "link": "https://github.com/fovlin/docs-go", "label": "GitHub" }
+  ],
   "footer": {
     "message": "Built with docs-go.",
     "copyright": ""
