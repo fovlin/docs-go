@@ -1,6 +1,7 @@
 package main
 
 import (
+	"acovia.net/docs-go/internal/markdown"
 	"fmt"
 	"html"
 	"net/url"
@@ -10,7 +11,7 @@ import (
 	"strings"
 )
 
-func (app *App) parsePage(page *Page) (*parsedMarkdown, error) {
+func (app *App) parsePage(page *Page) (*markdown.Document, error) {
 	data, err := os.ReadFile(page.AbsPath)
 	if err != nil {
 		return nil, fmt.Errorf("read %s: %w", page.SourcePath, err)
