@@ -80,7 +80,7 @@ func TestBuild(t *testing.T) {
 	for _, want := range []string{
 		`<title>Start | Test docs</title>`,
 		`<h2 id="details">`,
-		`prev-next-title">Guide`,
+		`prev-next-title">Overview`,
 		`prev-next-title">Next`,
 	} {
 		if !strings.Contains(page, want) {
@@ -89,54 +89,15 @@ func TestBuild(t *testing.T) {
 	}
 }
 
-func TestBuildRejectsRouteMismatch(t *testing.T) {
-	root := t.TempDir()
-	writeTestProject(t, root)
-	writeFile(t, filepath.Join(root, "sidebar.json"), `{
-		"/guide/": [{ "text": "Guide", "link": "/outside" }]
-	}`)
-	writeFile(t, filepath.Join(root, "docs", "outside.md"), "# Outside\n")
-
-	logQuiet = true
-	_, err := LoadApp(root, "docs.json", "", "")
-	if err == nil || !strings.Contains(err.Error(), "outside its route") {
-		t.Fatalf("expected route mismatch, got %v", err)
-	}
-}
-
-func TestBuildRejectsDuplicatePageAcrossRoutes(t *testing.T) {
-	root := t.TempDir()
-	writeTestProject(t, root)
-	writeFile(t, filepath.Join(root, "sidebar.json"), `{
-		"/": [{ "text": "Home route", "link": "/guide/start" }],
-		"/guide/": [{ "text": "Guide", "link": "/guide/start" }]
-	}`)
-
-	logQuiet = true
-	_, err := LoadApp(root, "docs.json", "", "")
-	if err == nil || !strings.Contains(err.Error(), "more than one sidebar route") {
-		t.Fatalf("expected duplicate route error, got %v", err)
-	}
-}
-
 func TestAppPrevNext(t *testing.T) {
 	root := t.TempDir()
 	writeTestProject(t, root)
 	app := loadTestProject(t, root)
 
-	info, ok := app.URLTab["/guide/start"]
-	if !ok {
-		t.Fatal("page missing from URLTab")
-	}
-	if info.PrevHref != "/guide/" || info.NextHref != "/guide/next" {
-		t.Errorf("navigation = %+v", info)
-	}
-
 	page := mustPage(t, app, "/guide/start")
-
-	state := &RenderState{Page: page}
-	app.applyNavigation(state, page)
-	if state.Prev == nil || state.Prev.Text != "Guide" || state.Prev.Href != "/guide/" {
+	state := &RenderState{Page: page, Sidebar: app.sidebarFor(page.URL)}
+	app.applyNavigation(state)
+	if state.Prev == nil || state.Prev.Text != "Overview" || state.Prev.Href != "/guide/" {
 		t.Errorf("prev = %+v", state.Prev)
 	}
 	if state.Next == nil || state.Next.Text != "Next" || state.Next.Href != "/guide/next" {
@@ -294,5 +255,38 @@ func TestShellClassDoesNotReserveEmptySidebar(t *testing.T) {
 	state.Sidebar = []*SidebarNode{{Text: "Guide"}}
 	if got := shellClass(state); got != "shell" {
 		t.Fatalf("shell class = %q, want shell", got)
+	}
+}
+
+func TestSidebarCanLinkToAnotherSidebar(t *testing.T) {
+	root := t.TempDir()
+	writeTestProject(t, root)
+	writeFile(t, filepath.Join(root, "sidebar.json"), `{
+		"/guide/": [{
+			"text": "Guide",
+			"items": [
+				{ "text": "Start", "link": "/guide/start" },
+				{ "text": "CLI", "link": "/reference/cli" }
+			]
+		}],
+		"/reference/": [{
+			"text": "Reference",
+			"items": [{ "text": "CLI", "link": "/reference/cli" }]
+		}]
+	}`)
+	writeFile(t, filepath.Join(root, "docs", "reference", "cli.md"), "# CLI\n")
+
+	app := loadTestProject(t, root)
+	page := mustPage(t, app, "/guide/start")
+	state := &RenderState{Page: page, Sidebar: app.sidebarFor(page.URL)}
+	app.applyNavigation(state)
+
+	if state.Next == nil || state.Next.Href != "/reference/cli" || state.Next.Text != "CLI" {
+		t.Fatalf("cross-sidebar next = %+v", state.Next)
+	}
+
+	target := app.sidebarFor("/reference/cli")
+	if len(target) != 1 || target[0].Text != "Reference" {
+		t.Fatalf("target sidebar = %+v", target)
 	}
 }

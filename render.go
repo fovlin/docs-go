@@ -35,13 +35,13 @@ func (app *App) renderPageHTML(page *Page) ([]byte, error) {
 	}
 
 	state := &RenderState{Page: page}
-	app.applyNavigation(state, page)
+	state.Nav = app.navFor(page.URL)
+	state.Sidebar = app.sidebarFor(page.URL)
+	app.applyNavigation(state)
 	state.Body = string(renderMarkdown(parsed, func(destination string, image bool) string {
 		return app.resolveDestination(page, destination, image)
 	}))
 	state.Outline = filterOutline(parsed.Headings, app.Outline.Level)
-	state.Nav = app.navFor(page.URL)
-	state.Sidebar = app.sidebarFor(page.URL)
 	state.EditURL = app.editURL(page)
 	state.LastUpdated = app.lastUpdated(page)
 	app.fillPageChrome(state)

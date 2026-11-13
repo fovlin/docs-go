@@ -199,7 +199,6 @@
 		if (pageMenuBackdrop) {
 			pageMenuBackdrop.hidden = !open;
 		}
-		document.body.classList.toggle("page-menu-open", open);
 		pageMenuButton.setAttribute("aria-expanded", open ? "true" : "false");
 	}
 

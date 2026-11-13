@@ -22,7 +22,6 @@ type App struct {
 
 	Sidebar *SidebarConfig
 
-	URLTab       map[string]NavInfo
 	Nav          []*NavLink
 	SidebarTrees map[string][]*SidebarNode
 
@@ -114,10 +113,6 @@ func LoadApp(projectRoot, configFile, srcFlag, outFlag string) (*App, error) {
 
 	app.Nav = app.resolveNav()
 	app.SidebarTrees = app.resolveSidebarTrees()
-
-	if err := app.buildURLTab(); err != nil {
-		return nil, err
-	}
 
 	return app, nil
 }

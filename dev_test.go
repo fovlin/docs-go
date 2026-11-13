@@ -126,34 +126,6 @@ func TestDevCacheResetSeesNewSource(t *testing.T) {
 	}
 }
 
-func TestPrevNextTitleTracksSource(t *testing.T) {
-	root := t.TempDir()
-	writeTestProject(t, root)
-	app, err := LoadApp(root, "docs.json", "", "")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	next := app.findPageByURL("/guide/next")
-	html, err := app.renderPageHTML(next)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(string(html), `prev-next-title">Start`) {
-		t.Fatal("initial prev title missing")
-	}
-
-	writeFile(t, filepath.Join(root, "docs", "guide", "start.md"), "# Changed\n\nBody.\n")
-	next = app.findPageByURL("/guide/next")
-	html, err = app.renderPageHTML(next)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(string(html), `prev-next-title">Changed`) {
-		t.Fatal("prev title did not follow the edited source")
-	}
-}
-
 func TestSidebarTitleFollowsEditedSource(t *testing.T) {
 	root := t.TempDir()
 	writeTestProject(t, root)

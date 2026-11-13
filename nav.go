@@ -154,12 +154,7 @@ func (app *App) sidebarFor(pageURL string) []*SidebarNode {
 	if app.Sidebar.Global != nil {
 		nodes = app.SidebarTrees["/"]
 	} else {
-		for _, key := range app.Sidebar.keys {
-			if sidebarPrefixMatches(key, pageURL) {
-				nodes = app.SidebarTrees[key]
-				break
-			}
-		}
+		nodes = app.matchedSidebar(pageURL)
 	}
 
 	return app.markSidebar(nodes, pageURL)
@@ -173,7 +168,10 @@ func (app *App) markSidebar(nodes []*SidebarNode, pageURL string) []*SidebarNode
 	marked := make([]*SidebarNode, 0, len(nodes))
 	for _, node := range nodes {
 		clone := *node
-		clone.Items = app.markSidebar(node.Items, pageURL)
+
+		if len(clone.Items) != 0 {
+			clone.Items = app.markSidebar(node.Items, pageURL)
+		}
 
 		clone.Active = node.Path != "" && node.Path == pageURL
 		if !clone.Active && clone.Path != "" && len(clone.Items) > 0 {

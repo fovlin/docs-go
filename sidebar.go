@@ -119,3 +119,13 @@ func normalizeSidebarPrefix(key string, base string) string {
 	}
 	return key
 }
+
+func (app *App) matchedSidebar(pageURL string) []*SidebarNode {
+	for _, key := range app.Sidebar.keys {
+		if sidebarPrefixMatches(key, pageURL) {
+			return app.SidebarTrees[key]
+		}
+	}
+
+	return nil
+}

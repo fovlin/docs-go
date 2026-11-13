@@ -59,8 +59,6 @@
 
 html {
 	height: 100%;
-	min-width: 320px;
-	overflow-x: auto;
 	scroll-behavior: smooth;
 	scroll-padding-top: calc(var(--topbar-h) + 24px);
 }
@@ -68,7 +66,6 @@ html {
 body {
 	margin: 0;
 	min-height: 100%;
-	min-width: 320px;
 	background: var(--bg);
 	color: var(--text);
 	font-family: var(--font);
@@ -78,8 +75,7 @@ body {
 	-webkit-font-smoothing: antialiased;
 }
 
-body.sidebar-open,
-body.page-menu-open {
+body.sidebar-open {
 	overflow: hidden;
 }
 
@@ -281,8 +277,8 @@ button {
 }
 
 .page-menu {
-	position: absolute;
-	top: calc(100% + 8px);
+	position: fixed;
+	top: calc(var(--topbar-h) + 8px);
 	left: 50%;
 	right: auto;
 	z-index: 80;
@@ -581,7 +577,6 @@ button {
 /* content */
 
 .main {
-	min-width: 0;
 	padding: 44px 36px 92px;
 }
 
@@ -1280,6 +1275,57 @@ button {
 @media (min-width: 960px) {
 	.sidebar-backdrop {
 		display: none !important;
+	}
+}
+
+@media (max-width: 360px) {
+	.topbar-inner {
+		gap: 4px;
+		padding: 0 8px;
+	}
+
+	.brand {
+		gap: 0;
+	}
+
+	.brand-mark {
+		width: 26px;
+		height: 26px;
+	}
+
+	.brand-name {
+		display: none;
+	}
+
+	.icon-btn {
+		width: 30px;
+		height: 30px;
+	}
+
+	.topbar-actions {
+		gap: 2px;
+		max-width: none;
+	}
+
+	.page-menu {
+		left: 8px;
+		right: 8px;
+		width: auto;
+		min-width: 0;
+		transform: none;
+	}
+
+	.main {
+		padding: 22px 12px 56px;
+	}
+
+	.doc {
+		overflow-wrap: break-word;
+	}
+
+	.doc table {
+		display: block;
+		overflow-x: auto;
 	}
 }
 
