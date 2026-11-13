@@ -95,6 +95,10 @@ func (r *renderer) block(item block) {
 	case blockTable:
 		r.table(item)
 
+	case blockHTML:
+		r.builder.WriteString(item.text)
+		r.builder.WriteByte('\n')
+
 	case blockThematicBreak:
 		r.builder.WriteString("<hr>\n")
 
@@ -287,6 +291,9 @@ func (r *renderer) inlines(items []inline) {
 
 		case inlineAutolink:
 			r.autolink(item)
+
+		case inlineHTML:
+			r.builder.WriteString(item.text)
 
 		case inlineSoftBreak:
 			r.builder.WriteByte('\n')

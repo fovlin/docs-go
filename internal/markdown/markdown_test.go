@@ -194,15 +194,11 @@ func TestBlockquote(t *testing.T) {
 	}
 }
 
-func TestRawHTMLIsEscaped(t *testing.T) {
+func TestRawHTMLIsPreserved(t *testing.T) {
 	html := render("<figure><img src=\"/x.png\" alt=\"x\"></figure>\n")
 
-	if strings.Contains(html, "<figure>") {
-		t.Errorf("raw HTML was not escaped: %s", html)
-	}
-
-	if !strings.Contains(html, "&lt;figure&gt;") {
-		t.Errorf("escaped HTML missing: %s", html)
+	if !strings.Contains(html, "<figure><img src=\"/x.png\" alt=\"x\"></figure>") {
+		t.Errorf("raw HTML was changed: %s", html)
 	}
 }
 
@@ -272,4 +268,16 @@ func FuzzParse(f *testing.F) {
 		document := Parse([]byte(source), Options{Containers: defaultContainerLabels})
 		_ = document.Render(nil)
 	})
+}
+
+func TestRawHTMLBlockIsPreserved(t *testing.T) {
+	html := render("<figure class=\"x\">\n  <img src=\"/x.png\" alt=\"x\">\n</figure>\n\nAfter\n")
+
+	if strings.Contains(html, "<p><figure") {
+		t.Errorf("HTML block was wrapped in a paragraph: %s", html)
+	}
+
+	if !strings.Contains(html, "<figure class=\"x\">") {
+		t.Errorf("HTML block was escaped: %s", html)
+	}
 }

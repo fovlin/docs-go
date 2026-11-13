@@ -19,6 +19,7 @@ const (
 	inlineAutolink
 	inlineSoftBreak
 	inlineHardBreak
+	inlineHTML
 )
 
 type inline struct {
@@ -99,6 +100,11 @@ func parseInlineSegment(value string) []inline {
 
 		case '<':
 			if item, next, ok := parseAngleAutolink(value, i); ok {
+				items = append(items, item)
+				i = next
+				continue
+			}
+			if item, next, ok := parseHTMLInline(value, i); ok {
 				items = append(items, item)
 				i = next
 				continue
@@ -636,4 +642,56 @@ func nextRune(value string, index int) rune {
 	run, _ := utf8.DecodeRuneInString(value[index:])
 
 	return run
+}
+
+func parseHTMLInline(value string, start int) (inline, int, bool) {
+	if start >= len(value) || value[start] != '<' {
+		return inline{}, start, false
+	}
+
+	if strings.HasPrefix(value[start:], "<!--") {
+		end := strings.Index(value[start+4:], "-->")
+		if end < 0 {
+			return inline{}, start, false
+		}
+		end += start + 7
+		return inline{kind: inlineHTML, text: value[start:end]}, end, true
+	}
+
+	end := start + 1
+	var quote byte
+	for end < len(value) {
+		char := value[end]
+		if quote != 0 {
+			if char == quote {
+				quote = 0
+			}
+		} else if char == '\'' || char == '"' {
+			quote = char
+		} else if char == '>' {
+			break
+		}
+		end++
+	}
+	if end >= len(value) {
+		return inline{}, start, false
+	}
+
+	raw := value[start : end+1]
+	inner := raw[1 : len(raw)-1]
+	if inner == "" {
+		return inline{}, start, false
+	}
+	if inner[0] == '/' {
+		inner = inner[1:]
+	}
+	if inner == "" || (inner[0] != '!' && !isHTMLNameStart(inner[0])) {
+		return inline{}, start, false
+	}
+
+	return inline{kind: inlineHTML, text: raw}, end + 1, true
+}
+
+func isHTMLNameStart(char byte) bool {
+	return char >= 'a' && char <= 'z' || char >= 'A' && char <= 'Z'
 }

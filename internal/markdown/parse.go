@@ -46,6 +46,7 @@ const (
 	blockTableCell
 	blockThematicBreak
 	blockContainer
+	blockHTML
 )
 
 type block struct {
@@ -185,6 +186,13 @@ func (p *parser) parseBlocks(lines []string) []block {
 			continue
 		}
 
+		if isHTMLBlockStart(line) {
+			raw, next := collectHTMLBlock(lines, i)
+			blocks = append(blocks, block{kind: blockHTML, text: raw})
+			i = next
+			continue
+		}
+
 		if isTableStart(lines, i) {
 			table, next := p.parseTable(lines, i)
 			blocks = append(blocks, table)
@@ -230,6 +238,10 @@ func (p *parser) startsBlock(line string) bool {
 	}
 
 	if _, _, ok := p.containerStart(line); ok {
+		return true
+	}
+
+	if isHTMLBlockStart(line) {
 		return true
 	}
 
@@ -627,6 +639,52 @@ func firstParagraphText(blocks []block) string {
 	}
 
 	return walk(blocks)
+}
+
+var htmlBlockTags = map[string]bool{
+	"address": true, "article": true, "aside": true, "audio": true,
+	"blockquote": true, "details": true, "div": true, "dl": true,
+	"fieldset": true, "figcaption": true, "figure": true, "footer": true,
+	"form": true, "h1": true, "h2": true, "h3": true, "h4": true,
+	"h5": true, "h6": true, "header": true, "hr": true, "iframe": true,
+	"main": true, "nav": true, "ol": true, "p": true, "picture": true,
+	"pre": true, "script": true, "section": true, "style": true,
+	"summary": true, "svg": true, "table": true, "ul": true, "video": true,
+}
+
+func isHTMLBlockStart(line string) bool {
+	line = strings.TrimSpace(line)
+	if !strings.HasPrefix(line, "<") {
+		return false
+	}
+	if strings.HasPrefix(line, "<!--") || strings.HasPrefix(line, "<!") || strings.HasPrefix(line, "<?") {
+		return true
+	}
+
+	line = strings.TrimPrefix(line, "</")
+	line = strings.TrimPrefix(line, "<")
+	end := 0
+	for end < len(line) {
+		char := line[end]
+		if !(char >= 'a' && char <= 'z' || char >= 'A' && char <= 'Z' || char >= '0' && char <= '9') {
+			break
+		}
+		end++
+	}
+	if end == 0 {
+		return false
+	}
+
+	return htmlBlockTags[strings.ToLower(line[:end])]
+}
+
+func collectHTMLBlock(lines []string, start int) (string, int) {
+	end := start
+	for end < len(lines) && !isBlank(lines[end]) {
+		end++
+	}
+
+	return strings.Join(lines[start:end], "\n"), end
 }
 
 func collectPlainText(blocks []block) string {

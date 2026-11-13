@@ -102,8 +102,8 @@ absolute path such as `/logo.svg` for a file in `public/`.
 
 ## Raw HTML
 
-Raw HTML is not passed through. The source is escaped and shown as text, so a
-`<figure>` or `<script>` tag cannot become live HTML.
+Raw HTML is passed through unchanged, both inline and as block elements. This
+allows figures, embedded widgets, and other custom markup directly in Markdown.
 
-If you need a figure, use an image followed by a caption paragraph, or a
-`::: details` container.
+Only use raw HTML from trusted documentation sources; it runs in the generated
+page.
