@@ -279,14 +279,12 @@ button {
 .page-menu {
 	position: fixed;
 	top: calc(var(--topbar-h) + 8px);
-	left: 50%;
-	right: auto;
+	left: auto;
+	right: 16px;
 	z-index: 80;
-	width: min(280px, calc(100vw - 32px));
-	min-width: 260px;
-	transform: translateX(-50%);
-	max-height: min(70vh, 480px);
+	width: min(max(320px, 40%), calc(100vw - 32px));
 	overflow-y: auto;
+	max-height: calc(100vh - var(--topbar-h) - 16px);
 	padding: 14px;
 	border: 1px solid var(--border);
 	border-radius: var(--radius-md);
@@ -312,10 +310,6 @@ button {
 
 .page-menu .outline-list {
 	margin: 0;
-}
-
-.page-menu .outline-list a {
-	white-space: nowrap;
 }
 
 .page-menu-social {
@@ -577,7 +571,7 @@ button {
 /* content */
 
 .main {
-	padding: 44px 36px 92px;
+	padding: 40px 36px 92px;
 }
 
 .content-grid {
@@ -1187,12 +1181,6 @@ button {
 		padding: 0 16px;
 	}
 
-	.page-menu {
-		left: 50%;
-		right: auto;
-		transform: translateX(-50%);
-	}
-
 	.menu-btn {
 		display: inline-flex;
 	}
@@ -1310,14 +1298,6 @@ button {
 		max-width: none;
 	}
 
-	.page-menu {
-		left: 8px;
-		right: 8px;
-		width: auto;
-		min-width: 0;
-		transform: none;
-	}
-
 	.main {
 		padding: 22px 12px 56px;
 	}
@@ -1336,6 +1316,14 @@ button {
 	.topbar-inner {
 		gap: 4px;
 		padding: 0 12px;
+	}
+
+	.page-menu {
+		left: 8px;
+		right: 8px;
+		width: auto;
+		max-width: none;
+		max-height: calc(100vh - var(--topbar-h) - 16px);
 	}
 
 	.brand {
