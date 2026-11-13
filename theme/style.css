@@ -12,7 +12,7 @@
 	--accent-hover: light-dark(#003f73, #0063b3);
 	--accent-soft: light-dark(rgba(0, 79, 143, 0.09), rgba(108, 176, 224, 0.12));
 	--on-accent: #ffffff;
-	--link: light-dark(#005fa3, #6cb0e0);
+	--link: light-dark(#004f8f, #007fcf);
 	--green: light-dark(#246b3a, #83c795);
 	--green-soft: light-dark(rgba(47, 125, 50, 0.09), rgba(131, 199, 149, 0.1));
 	--amber: light-dark(#8a5a00, #d3ae67);
@@ -985,7 +985,7 @@ button {
 	border: 1px solid var(--border);
 	border-radius: var(--radius-md);
 	color: var(--text);
-	text-decoration: none;
+	text-decoration:none;
 }
 
 .prev-next-link:hover {

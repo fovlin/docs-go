@@ -8,7 +8,6 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
-	"time"
 )
 
 func (app *App) parsePage(page *Page) (*parsedMarkdown, error) {
@@ -81,7 +80,7 @@ func (app *App) fillPageChrome(state *RenderState) {
 	state.PrevText = app.PrevText
 	state.NextText = app.NextText
 	state.FooterMessage = app.Footer.Message
-	state.FooterCopyright = strings.ReplaceAll(app.Footer.Copyright, "{year}", fmt.Sprint(time.Now().Year()))
+	state.FooterCopyright = app.Footer.Copyright
 	state.Bootstrap = app.Bootstrap
 	state.Version = version
 

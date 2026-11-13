@@ -1,6 +1,6 @@
 {
-  "title": "__TITLE__",
-  "description": "__DESCRIPTION__",
+  "title": "Docs",
+  "description": "A documentation site built with docs-go.",
   "lang": "en",
   "base": "/",
   "src_dir": "docs",
@@ -9,11 +9,11 @@
   "clean_urls": true,
   "sidebar_file": "sidebar.json",
   "nav": [
-    { "text": "Guide", "link": "/guide/" }
+    { "text": "Guide", "link": "/guide/getting-started" }
   ],
   "footer": {
     "message": "Built with docs-go.",
-    "copyright": "Copyright © {year} __TITLE__"
+    "copyright": ""
   },
   "outline": {
     "label": "On this page",

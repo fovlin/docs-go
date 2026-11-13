@@ -281,3 +281,20 @@ func TestRawHTMLBlockIsPreserved(t *testing.T) {
 		t.Errorf("HTML block was escaped: %s", html)
 	}
 }
+
+func TestRawHTMLBlockStopsAtClosingMarker(t *testing.T) {
+	html := render("<div class=\"box\">\nfirst\n\nsecond\n</div>\n\nAfter\n")
+
+	if !strings.Contains(html, "first\n\nsecond") {
+		t.Errorf("blank line inside HTML block was lost: %s", html)
+	}
+
+	if !strings.Contains(html, "<p>After</p>") {
+		t.Errorf("markdown after the HTML block was lost: %s", html)
+	}
+
+	selfClosing := render("<hr />\n\nAfter\n")
+	if !strings.Contains(selfClosing, "<hr />") || !strings.Contains(selfClosing, "<p>After</p>") {
+		t.Errorf("self-closing HTML block consumed following markdown: %s", selfClosing)
+	}
+}

@@ -3,19 +3,8 @@
     {
       "text": "Guide",
       "items": [
-        { "text": "Overview", "link": "/guide/" },
         { "text": "Getting started", "link": "/guide/getting-started" },
-        { "text": "Configuration", "link": "/guide/configuration" },
-        { "text": "Markdown", "link": "/guide/markdown" },
-        { "text": "Deploying", "link": "/guide/deploy" }
-      ]
-    }
-  ],
-  "/reference/": [
-    {
-      "text": "Reference",
-      "items": [
-        { "text": "Command line", "link": "/reference/cli" }
+        { "text": "Configuration", "link": "/guide/configuration" }
       ]
     }
   ]

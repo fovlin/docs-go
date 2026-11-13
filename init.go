@@ -21,7 +21,6 @@ func runInit(root string, force bool) error {
 		return fmt.Errorf("%s already exists; use --force", configFile)
 	}
 
-	title := initTitle(root)
 	var created, kept []string
 
 	err := fs.WalkDir(themeFS, "scaffold", func(current string, entry fs.DirEntry, err error) error {
@@ -40,10 +39,6 @@ func runInit(root string, force bool) error {
 		if err != nil {
 			return err
 		}
-		data = []byte(strings.NewReplacer(
-			"__TITLE__", title,
-			"__DESCRIPTION__", "Documentation for "+title+".",
-		).Replace(string(data)))
 
 		if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
 			return err
@@ -83,20 +78,4 @@ func displayPath(root string) string {
 		return relative
 	}
 	return root
-}
-
-func initTitle(root string) string {
-	name := strings.TrimSpace(filepath.Base(root))
-	if name == "" || name == "." || name == string(filepath.Separator) {
-		name = "Docs"
-	}
-
-	name = strings.NewReplacer("-", " ", "_", " ", "\"", "", "\\", "", "\n", "", "\r", "", "\t", "").Replace(name)
-	runes := []rune(name)
-	if len(runes) == 0 {
-		return "Docs"
-	}
-
-	runes[0] = []rune(strings.ToUpper(string(runes[0])))[0]
-	return string(runes)
 }
