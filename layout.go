@@ -212,7 +212,13 @@ func sidebarItems(nodes []*SidebarNode) string {
 			if node.Open {
 				open = "true"
 			}
-			fmt.Fprintf(&b, "<div class=\"sidebar-group%s\" data-open=\"%s\">\n<div class=\"sidebar-group-row\">\n", openClass(node), open)
+			rowClass := "sidebar-group-row"
+			rowMeta := ""
+			if node.Href == "" {
+				rowClass += " is-toggle"
+				rowMeta = fmt.Sprintf(" role=\"button\" tabindex=\"0\" aria-expanded=\"%s\"", open)
+			}
+			fmt.Fprintf(&b, "<div class=\"sidebar-group%s\" data-open=\"%s\">\n<div class=\"%s\"%s>\n", openClass(node), open, rowClass, rowMeta)
 			if node.Href != "" {
 				active := ""
 				if node.Active {
@@ -226,7 +232,7 @@ func sidebarItems(nodes []*SidebarNode) string {
 			} else {
 				fmt.Fprintf(&b, "<span class=\"sidebar-group-label\">%s</span>\n", escapeHTML(node.Text))
 			}
-			fmt.Fprintf(&b, "<button class=\"sidebar-toggle\" type=\"button\" aria-label=\"%s\" aria-expanded=\"%s\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"m9 6 6 6-6 6\"/></svg></button>\n</div>\n<div class=\"sidebar-group-items\">\n", escapeHTML(node.Text), open)
+			b.WriteString("</div>\n<div class=\"sidebar-group-items\">\n")
 			b.WriteString(sidebarItems(node.Items))
 			b.WriteString("</div>\n</div>\n")
 		} else {

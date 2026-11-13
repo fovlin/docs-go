@@ -162,9 +162,9 @@
 
 	/* collapsible sidebar groups */
 
-	Array.prototype.forEach.call(document.querySelectorAll(".sidebar-toggle"), function (button) {
-		button.addEventListener("click", function () {
-			var group = button.closest(".sidebar-group");
+	Array.prototype.forEach.call(document.querySelectorAll(".sidebar-group-row.is-toggle"), function (row) {
+		function toggle() {
+			var group = row.closest(".sidebar-group");
 			if (!group) {
 				return;
 			}
@@ -172,7 +172,15 @@
 			var open = !group.classList.contains("is-open");
 			group.classList.toggle("is-open", open);
 			group.setAttribute("data-open", open ? "true" : "false");
-			button.setAttribute("aria-expanded", open ? "true" : "false");
+			row.setAttribute("aria-expanded", open ? "true" : "false");
+		}
+
+		row.addEventListener("click", toggle);
+		row.addEventListener("keydown", function (event) {
+			if (event.key === "Enter" || event.key === " ") {
+				event.preventDefault();
+				toggle();
+			}
 		});
 	});
 

@@ -407,6 +407,15 @@ button {
 	align-items: center;
 	gap: 2px;
 	min-height: 32px;
+	border-radius: var(--radius-sm);
+}
+
+.sidebar-group-row.is-toggle {
+	cursor: pointer;
+}
+
+.sidebar-group-row.is-toggle:hover {
+	background: var(--surface-2);
 }
 
 .sidebar-group-label,
@@ -423,7 +432,7 @@ button {
 }
 
 .sidebar-group-label {
-	cursor: default;
+	cursor: inherit;
 }
 
 .sidebar-group-link:hover {
@@ -434,37 +443,8 @@ button {
 	color: var(--link);
 }
 
-.sidebar-toggle {
-	display: grid;
-	place-items: center;
-	flex: 0 0 auto;
-	width: 26px;
-	height: 26px;
-	padding: 0;
-	border: 0;
-	border-radius: var(--radius-xs);
-	background: transparent;
-	color: var(--faint);
-	cursor: pointer;
-}
-
-.sidebar-toggle:hover {
-	background: var(--surface-2);
-	color: var(--text);
-}
-
-.sidebar-toggle svg {
-	width: 15px;
-	height: 15px;
-	transition: transform 0.16s ease;
-}
-
 .sidebar-group:not(.is-open) > .sidebar-group-items {
 	display: none;
-}
-
-.sidebar-group.is-open > .sidebar-group-row .sidebar-toggle svg {
-	transform: rotate(90deg);
 }
 
 .mobile-nav {
