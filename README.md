@@ -1,7 +1,5 @@
 # DOCS_GO
 
-> BUILD BY AI!!!
-
 > A small, plain static documentation generator in Go, in the spirit of
 
 
