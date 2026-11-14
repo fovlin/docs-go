@@ -290,3 +290,21 @@ func TestSidebarCanLinkToAnotherSidebar(t *testing.T) {
 		t.Fatalf("target sidebar = %+v", target)
 	}
 }
+
+func TestBrandOmitsImageWithoutLogo(t *testing.T) {
+	page := &RenderState{
+		Page:   &Page{},
+		Config: Config{Title: "Docs"},
+	}
+
+	html := brand(page)
+	if strings.Contains(html, "<img") {
+		t.Fatalf("brand rendered an image without a logo: %s", html)
+	}
+
+	page.LogoURL = "/logo.svg"
+	html = brand(page)
+	if !strings.Contains(html, `<img class="brand-logo" src="/logo.svg"`) {
+		t.Fatalf("brand did not render the configured logo: %s", html)
+	}
+}

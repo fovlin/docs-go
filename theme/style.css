@@ -91,6 +91,11 @@ button {
 	font-family: inherit;
 }
 
+svg {
+	width: 24px;
+	height: 24px;
+}
+
 ::selection {
 	background: var(--accent-soft);
 }
@@ -155,7 +160,7 @@ button {
 	position: relative;
 	display: flex;
 	align-items: center;
-	gap: 10px;
+	gap: 8px;
 	max-width: var(--shell-w);
 	min-height: var(--topbar-h);
 	margin: 0 auto;
@@ -165,27 +170,13 @@ button {
 .brand {
 	display: inline-flex;
 	flex: 0 0 auto;
+	justify-content: center;
 	align-items: center;
-	gap: 9px;
-	min-width: 0;
+	gap: 6px;
+	min-width: 32px;
+	min-height: 32px;
 	color: var(--text);
 	text-decoration: none;
-}
-
-.brand-mark {
-	display: grid;
-	place-items: center;
-	flex: 0 0 auto;
-	width: 30px;
-	height: 30px;
-	border-radius: 9px;
-	background: var(--accent);
-	color: var(--on-accent);
-}
-
-.brand-mark svg {
-	width: 18px;
-	height: 18px;
 }
 
 .brand-logo {
@@ -325,8 +316,8 @@ button {
 	display: inline-flex;
 	align-items: center;
 	justify-content: center;
-	width: 34px;
-	height: 34px;
+	width: 32px;
+	height: 32px;
 	padding: 0;
 	border: 1px solid transparent;
 	border-radius: var(--radius-sm);
@@ -338,11 +329,6 @@ button {
 .icon-btn:hover {
 	background: var(--surface-2);
 	color: var(--text);
-}
-
-.icon-btn svg {
-	width: 18px;
-	height: 18px;
 }
 
 .menu-btn {
@@ -379,11 +365,6 @@ button {
 .social-link:hover {
 	background: var(--surface-2);
 	color: var(--text);
-}
-
-.social-link svg {
-	width: 17px;
-	height: 17px;
 }
 
 .theme-btn .icon-sun {
@@ -518,9 +499,8 @@ button {
 }
 
 .sidebar-arrow svg {
-	width: 15px;
-	height: 15px;
-	transition: transform 0.16s ease;
+	height: 18px;
+	width: 18px;
 }
 
 .sidebar-group.is-open .sidebar-arrow svg {
@@ -837,11 +817,6 @@ button {
 	}
 }
 
-.copy-btn svg {
-	width: 15px;
-	height: 15px;
-}
-
 .copy-btn.copied {
 	color: var(--green);
 }
@@ -1048,11 +1023,6 @@ button {
 	text-decoration: underline;
 }
 
-.edit-link svg {
-	width: 15px;
-	height: 15px;
-}
-
 .last-updated {
 	margin-left: auto;
 }
@@ -1095,8 +1065,8 @@ button {
 }
 
 .prev-next-label svg {
-	width: 13px;
-	height: 13px;
+	width: 18px;
+	height: 18px;
 }
 
 .prev-next-title {
@@ -1269,52 +1239,9 @@ button {
 	}
 }
 
-@media (max-width: 360px) {
-	.topbar-inner {
-		gap: 4px;
-		padding: 0 8px;
-	}
-
-	.brand {
-		gap: 0;
-	}
-
-	.brand-mark {
-		width: 26px;
-		height: 26px;
-	}
-
-	.brand-name {
-		display: none;
-	}
-
-	.icon-btn {
-		width: 30px;
-		height: 30px;
-	}
-
-	.topbar-actions {
-		gap: 2px;
-		max-width: none;
-	}
-
-	.main {
-		padding: 22px 12px 56px;
-	}
-
-	.doc {
-		overflow-wrap: break-word;
-	}
-
-	.doc table {
-		display: block;
-		overflow-x: auto;
-	}
-}
-
 @media (max-width: 640px) {
 	.topbar-inner {
-		gap: 4px;
+		gap: 6px;
 		padding: 0 12px;
 	}
 
@@ -1324,15 +1251,6 @@ button {
 		width: auto;
 		max-width: none;
 		max-height: calc(100vh - var(--topbar-h) - 16px);
-	}
-
-	.brand {
-		gap: 7px;
-	}
-
-	.brand-mark {
-		width: 28px;
-		height: 28px;
 	}
 
 	.brand-name {
@@ -1380,6 +1298,44 @@ button {
 		align-items: flex-start;
 		gap: 10px;
 		padding: 22px 18px;
+	}
+}
+
+@media (max-width: 360px) {
+	.topbar-inner {
+		gap: 4px;
+		padding: 0 8px;
+	}
+
+	.brand {
+		gap: 0;
+	}
+
+	.brand-name {
+		display: none;
+	}
+
+	.icon-btn {
+		width: 30px;
+		height: 30px;
+	}
+
+	.topbar-actions {
+		gap: 2px;
+		max-width: none;
+	}
+
+	.main {
+		padding: 22px 12px 56px;
+	}
+
+	.doc {
+		overflow-wrap: break-word;
+	}
+
+	.doc table {
+		display: block;
+		overflow-x: auto;
 	}
 }
 

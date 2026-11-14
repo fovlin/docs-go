@@ -7,6 +7,7 @@ import (
 	"strings"
 )
 
+// Find a page by URL path, return a page meta data
 func (app *App) findPageByURL(target string) *Page {
 	target = canonicalURL(target)
 	trailing := strings.HasSuffix(target, "/")
@@ -31,6 +32,7 @@ func (app *App) findPageByURL(target string) *Page {
 	return app.findSource(candidates)
 }
 
+// Find a page by Source path, like path of end with `.md“, return a page meta data
 func (app *App) findPageBySource(relative string) *Page {
 	relative = strings.TrimPrefix(path.Clean("/"+relative), "/")
 
@@ -40,16 +42,25 @@ func (app *App) findPageBySource(relative string) *Page {
 		}
 	}
 
-	if relative == "" || strings.HasSuffix(relative, "/") {
+	trailing := relative == "" || strings.HasSuffix(relative, "/")
+	if relative == "" {
+		relative = "index"
+	} else if strings.HasSuffix(relative, "/") {
 		relative = strings.TrimSuffix(relative, "/") + "/index"
 	}
 
-	return app.findSource([]string{
+	candidates := []string{
 		relative + ".md",
 		relative + ".markdown",
-		relative + "/index.md",
-		relative + "/index.markdown",
-	})
+	}
+	if !trailing {
+		candidates = append(candidates,
+			relative+"/index.md",
+			relative+"/index.markdown",
+		)
+	}
+
+	return app.findSource(candidates)
 }
 
 func (app *App) findSource(candidates []string) *Page {

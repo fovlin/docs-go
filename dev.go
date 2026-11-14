@@ -181,8 +181,13 @@ func (app *App) serveDev(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	document := app.renderLayout(app.notFoundPage())
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Header().Set("Cache-Control", "no-cache")
 	w.WriteHeader(http.StatusNotFound)
-	serveBytes(w, r, "404.html", app.renderLayout(app.notFoundPage()))
+	if r.Method != http.MethodHead {
+		_, _ = w.Write(document)
+	}
 }
 
 func fileStamp(name string) string {

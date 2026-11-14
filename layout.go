@@ -11,8 +11,8 @@ type layoutPart struct {
 	name string
 }
 
-// compileLayout splits the static template once. Rendering is pure
-// concatenation afterwards.
+// compileLayout splits the static template once. Rendering only concatenates
+// text and values; it does not build a replacer or scan the template per page.
 func compileLayout(source string) []layoutPart {
 	parts := make([]layoutPart, 0, 32)
 
@@ -53,6 +53,7 @@ func (app *App) renderLayout(page *RenderState) []byte {
 	return []byte(builder.String())
 }
 
+// Dy generate text with page value
 func layoutValues(page *RenderState) map[string]string {
 	ogType := "article"
 	if page.URL == "/" {
@@ -116,9 +117,7 @@ func brand(page *RenderState) string {
 	fmt.Fprintf(&b, "<a class=\"brand\" href=\"%s\" aria-label=\"%s\">", escapeHTML(page.HomeURL), escapeHTML(page.Config.Title))
 
 	if page.LogoURL != "" {
-		fmt.Fprintf(&b, "<img class=\"brand-logo\" src=\"%s\" alt=\"\" width=\"26\" height=\"26\">", escapeHTML(page.LogoURL))
-	} else {
-		b.WriteString("<span class=\"brand-mark\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"m12 3 9 5-9 5-9-5 9-5Z\"/><path d=\"m3 12 9 5 9-5\"/><path d=\"m3 16 9 5 9-5\"/></svg></span>")
+		fmt.Fprintf(&b, "<img class=\"brand-logo\" src=\"%s\" alt=\"\">", escapeHTML(page.LogoURL))
 	}
 
 	fmt.Fprintf(&b, "<span class=\"brand-name\">%s</span></a>\n", escapeHTML(page.Config.Title))
@@ -312,6 +311,7 @@ func outlineList(page *RenderState) string {
 
 	var b strings.Builder
 	b.WriteString("<ul class=\"outline-list\">\n")
+	fmt.Fprintf(&b, "<li class=\"outline-item\"><a href=\"#\">%s</a></li>\n", escapeHTML(page.Heading))
 	for _, heading := range page.Outline {
 		fmt.Fprintf(&b, "<li class=\"outline-item outline-level-%d\"><a href=\"#%s\">%s</a></li>\n", heading.Level, escapeHTML(heading.ID), escapeHTML(heading.Text))
 	}
