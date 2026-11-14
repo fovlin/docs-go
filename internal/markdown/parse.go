@@ -679,9 +679,8 @@ func isHTMLBlockStart(line string) bool {
 // by a delimiter, so they are rejected.
 func htmlTagName(line string) (name string, closed, ok bool) {
 	rest := line[1:]
-	if strings.HasPrefix(rest, "/") {
-		rest = rest[1:]
-	}
+	rest = strings.TrimPrefix(rest, "/")
+
 	if rest == "" || !isHTMLNameStart(rest[0]) {
 		return "", false, false
 	}
