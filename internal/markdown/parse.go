@@ -677,7 +677,7 @@ func isHTMLBlockStart(line string) bool {
 // whether that tag closes on this line. Autolinks such as
 // <https://example.com> and text such as <3 do not produce a tag name followed
 // by a delimiter, so they are rejected.
-func htmlTagName(line string) (string, bool, bool) {
+func htmlTagName(line string) (name string, closed, ok bool) {
 	rest := line[1:]
 	if strings.HasPrefix(rest, "/") {
 		rest = rest[1:]
@@ -699,7 +699,10 @@ func htmlTagName(line string) (string, bool, bool) {
 		}
 	}
 
-	return strings.ToLower(rest[:end]), strings.Contains(rest[end:], ">"), true
+	name = strings.ToLower(rest[:end])
+	closed = strings.Contains(rest[end:], ">")
+
+	return name, closed, true
 }
 
 func isHTMLNameChar(char byte) bool {
