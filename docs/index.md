@@ -14,6 +14,8 @@ docs-go build      # write the site to dist/
 docs-go dev      # build, watch for changes and preview on :8080
 ~~~
 
+xxx <https://sufox.net>
+
 ## Where things live
 
 | Path | Purpose |

@@ -360,7 +360,7 @@ func parseLinkTarget(value string, start int) (string, string, int, bool) {
 		index = end + 1
 	} else {
 		var builder strings.Builder
-		depth := 0
+		depth := 1
 
 		for index < len(value) {
 			char := value[index]
@@ -379,7 +379,7 @@ func parseLinkTarget(value string, start int) (string, string, int, bool) {
 			}
 
 			if char == ')' {
-				if depth == 0 {
+				if depth == 1 {
 					break
 				}
 
