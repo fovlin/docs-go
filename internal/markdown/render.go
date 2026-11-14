@@ -108,11 +108,11 @@ func (r *renderer) block(item block) {
 }
 
 func (r *renderer) heading(item block) {
-	fmt.Fprintf(&r.builder, `<h%d id="%s">`, item.level, escapeAttribute(item.id))
+	fmt.Fprintf(&r.builder, `<h%d id="%s">`, item.level, html.EscapeString(item.id))
 	r.inlines(item.inlines)
 
 	if item.id != "" {
-		fmt.Fprintf(&r.builder, `<a class="header-anchor" href="#%s" aria-label="Link to this heading"></a>`, escapeAttribute(item.id))
+		fmt.Fprintf(&r.builder, `<a class="header-anchor" href="#%s" aria-label="Link to this heading"></a>`, html.EscapeString(item.id))
 	}
 
 	fmt.Fprintf(&r.builder, "</h%d>\n", item.level)
@@ -127,7 +127,7 @@ func (r *renderer) code(item block) {
 	if language == "" {
 		r.builder.WriteString(`<div class="code-block"><pre><code>`)
 	} else {
-		fmt.Fprintf(&r.builder, `<div class="code-block" data-lang="%s"><pre><code class="language-%s">`, escapeAttribute(language), escapeAttribute(language))
+		fmt.Fprintf(&r.builder, `<div class="code-block" data-lang="%s"><pre><code class="language-%s">`, html.EscapeString(language), html.EscapeString(language))
 	}
 
 	r.builder.WriteString(html.EscapeString(item.text))
@@ -222,7 +222,7 @@ func (r *renderer) tableRow(row block) {
 		if cell.align == "" {
 			fmt.Fprintf(&r.builder, "<%s>", tag)
 		} else {
-			fmt.Fprintf(&r.builder, `<%s style="text-align:%s">`, tag, escapeAttribute(cell.align))
+			fmt.Fprintf(&r.builder, `<%s style="text-align:%s">`, tag, html.EscapeString(cell.align))
 		}
 
 		r.inlines(cell.inlines)
@@ -251,7 +251,7 @@ func (r *renderer) container(item block) {
 		return
 	}
 
-	fmt.Fprintf(&r.builder, `<div class="custom-block %s">`+"\n", escapeAttribute(kind))
+	fmt.Fprintf(&r.builder, `<div class="custom-block %s">`+"\n", html.EscapeString(kind))
 	fmt.Fprintf(&r.builder, `<p class="custom-block-title">%s</p>`+"\n", html.EscapeString(title))
 	r.blocks(item.children)
 	r.builder.WriteString("</div>\n")
@@ -305,19 +305,12 @@ func (r *renderer) inlines(items []inline) {
 }
 
 func (r *renderer) link(item inline) {
-	destination := item.url
-	if r.resolve != nil {
-		destination = r.resolve(destination, false)
-	}
+	destination := r.safeDestination(item.url, false)
 
-	if !safeURL(destination, false) {
-		destination = "#"
-	}
-
-	fmt.Fprintf(&r.builder, `<a href="%s"`, escapeAttribute(destination))
+	fmt.Fprintf(&r.builder, `<a href="%s"`, html.EscapeString(destination))
 
 	if item.title != "" {
-		fmt.Fprintf(&r.builder, ` title="%s"`, escapeAttribute(item.title))
+		fmt.Fprintf(&r.builder, ` title="%s"`, html.EscapeString(item.title))
 	}
 
 	r.builder.WriteString(">")
@@ -326,35 +319,39 @@ func (r *renderer) link(item inline) {
 }
 
 func (r *renderer) image(item inline) {
-	destination := item.url
-	if r.resolve != nil {
-		destination = r.resolve(destination, true)
-	}
+	destination := r.safeDestination(item.url, true)
 
-	if !safeURL(destination, true) {
-		destination = ""
-	}
-
-	fmt.Fprintf(&r.builder, `<img src="%s" alt="%s"`, escapeAttribute(destination), escapeAttribute(plainInlines(item.children)))
+	fmt.Fprintf(&r.builder, `<img src="%s" alt="%s"`, html.EscapeString(destination), html.EscapeString(plainInlines(item.children)))
 
 	if item.title != "" {
-		fmt.Fprintf(&r.builder, ` title="%s"`, escapeAttribute(item.title))
+		fmt.Fprintf(&r.builder, ` title="%s"`, html.EscapeString(item.title))
 	}
 
 	r.builder.WriteString(">")
 }
 
 func (r *renderer) autolink(item inline) {
-	destination := item.url
+	destination := r.safeDestination(item.url, false)
+
+	fmt.Fprintf(&r.builder, `<a href="%s">%s</a>`, html.EscapeString(destination), html.EscapeString(item.text))
+}
+
+// safeDestination resolves a destination and neutralises unsafe schemes.
+// Links fall back to "#"; images fall back to an empty src.
+func (r *renderer) safeDestination(value string, image bool) string {
 	if r.resolve != nil {
-		destination = r.resolve(destination, false)
+		value = r.resolve(value, image)
 	}
 
-	if !safeURL(destination, false) {
-		destination = "#"
+	if safeURL(value, image) {
+		return value
 	}
 
-	fmt.Fprintf(&r.builder, `<a href="%s">%s</a>`, escapeAttribute(destination), html.EscapeString(item.text))
+	if image {
+		return ""
+	}
+
+	return "#"
 }
 
 func safeURL(value string, image bool) bool {
@@ -376,8 +373,4 @@ func safeURL(value string, image bool) bool {
 	default:
 		return false
 	}
-}
-
-func escapeAttribute(value string) string {
-	return html.EscapeString(value)
 }

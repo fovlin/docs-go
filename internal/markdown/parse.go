@@ -6,7 +6,6 @@
 package markdown
 
 import (
-	"html"
 	"strconv"
 	"strings"
 	"unicode"
@@ -54,6 +53,11 @@ const (
 	blockHTML
 )
 
+// block is a small union: each kind uses only some fields. Heading: level,
+// id, inlines. Paragraph: inlines. Code: text, language. List: ordered,
+// start, tight, tasks, children. List item: task, children. Table row:
+// header, children. Table cell: align, inlines. Container: containerKind,
+// containerTitle, children. HTML: text. Blockquote: children.
 type block struct {
 	kind blockKind
 
@@ -455,7 +459,7 @@ func (p *parser) parseTable(lines []string, start int) (block, int) {
 }
 
 func (p *parser) containerStart(line string) (string, string, bool) {
-	index := leadingSpaces(line)
+	index := blockIndent(line)
 	if index > 3 || !strings.HasPrefix(line[index:], ":::") {
 		return "", "", false
 	}
@@ -655,7 +659,7 @@ func isHTMLBlockStart(line string) bool {
 		return true
 	}
 
-	name, rest, ok := htmlTagName(trimmed)
+	name, closed, ok := htmlTagName(trimmed)
 	if !ok {
 		return false
 	}
@@ -663,22 +667,23 @@ func isHTMLBlockStart(line string) bool {
 	// A void element has no closing tag, so it can only be a one-line block.
 	// Treating an incomplete one as a block would swallow the rest of the file.
 	if voidHTMLElements[name] {
-		return strings.Contains(rest, ">")
+		return closed
 	}
 
 	return true
 }
 
 // htmlTagName returns the lower-case element name at the start of a tag and
-// the text after it. Autolinks such as <https://example.com> and text such as
-// <3 do not produce a tag name followed by a delimiter, so they are rejected.
-func htmlTagName(line string) (string, string, bool) {
+// whether that tag closes on this line. Autolinks such as
+// <https://example.com> and text such as <3 do not produce a tag name followed
+// by a delimiter, so they are rejected.
+func htmlTagName(line string) (string, bool, bool) {
 	rest := line[1:]
 	if strings.HasPrefix(rest, "/") {
 		rest = rest[1:]
 	}
 	if rest == "" || !isHTMLNameStart(rest[0]) {
-		return "", "", false
+		return "", false, false
 	}
 
 	end := 1
@@ -690,11 +695,11 @@ func htmlTagName(line string) (string, string, bool) {
 		switch rest[end] {
 		case '>', '/', ' ', '\t', '\n', '\r':
 		default:
-			return "", "", false
+			return "", false, false
 		}
 	}
 
-	return strings.ToLower(rest[:end]), rest[end:], true
+	return strings.ToLower(rest[:end]), strings.Contains(rest[end:], ">"), true
 }
 
 func isHTMLNameChar(char byte) bool {
@@ -703,7 +708,7 @@ func isHTMLNameChar(char byte) bool {
 
 func collectHTMLBlock(lines []string, start int) (string, int) {
 	trimmed := strings.TrimSpace(lines[start])
-	if name, _, ok := htmlTagName(trimmed); ok && voidHTMLElements[name] {
+	if name, closed, ok := htmlTagName(trimmed); ok && closed && voidHTMLElements[name] {
 		return lines[start], start + 1
 	}
 
@@ -712,16 +717,29 @@ func collectHTMLBlock(lines []string, start int) (string, int) {
 		line := strings.TrimSpace(lines[end])
 		end++
 
-		if strings.HasSuffix(line, "/>") ||
-			strings.HasSuffix(line, "-->") ||
-			(strings.HasSuffix(line, ">") && strings.Contains(line, "</")) ||
-			(strings.HasPrefix(line, "<!") && strings.HasSuffix(line, ">")) ||
-			(strings.HasPrefix(line, "<?") && strings.HasSuffix(line, ">")) {
+		if endsHTMLBlock(line) {
 			return strings.Join(lines[start:end], "\n"), end
 		}
 	}
 
 	return strings.Join(lines[start:end], "\n"), end
+}
+
+// endsHTMLBlock reports whether a trimmed line closes a raw HTML block. The
+// parser accepts the common endings instead of matching tags: a self-closing
+// tag, a comment, a closing tag, a doctype or a processing instruction.
+func endsHTMLBlock(line string) bool {
+	if strings.HasSuffix(line, "/>") || strings.HasSuffix(line, "-->") {
+		return true
+	}
+
+	if !strings.HasSuffix(line, ">") {
+		return false
+	}
+
+	return strings.Contains(line, "</") ||
+		strings.HasPrefix(line, "<!") ||
+		strings.HasPrefix(line, "<?")
 }
 
 func collectPlainText(blocks []block) string {
@@ -772,7 +790,7 @@ type listMarker struct {
 }
 
 func parseListMarker(line string) (listMarker, bool) {
-	indent := leadingSpaces(line)
+	indent := blockIndent(line)
 	if indent > 3 || indent >= len(line) {
 		return listMarker{}, false
 	}
@@ -852,7 +870,7 @@ func taskMarker(content string) (bool, string, bool) {
 
 // parse code block
 func fenceStart(line string) (byte, int, string, bool) {
-	indent := leadingSpaces(line)
+	indent := blockIndent(line)
 	if indent > 3 || indent >= len(line) {
 		return 0, 0, "", false
 	}
@@ -881,7 +899,7 @@ func fenceStart(line string) (byte, int, string, bool) {
 }
 
 func fenceClose(line string, char byte, length int) bool {
-	indent := leadingSpaces(line)
+	indent := blockIndent(line)
 	if indent > 3 || indent >= len(line) || line[indent] != char {
 		return false
 	}
@@ -899,7 +917,7 @@ func fenceClose(line string, char byte, length int) bool {
 }
 
 func headingStart(line string) (int, string, string, bool) {
-	indent := leadingSpaces(line)
+	indent := blockIndent(line)
 	if indent > 3 || indent >= len(line) {
 		return 0, "", "", false
 	}
@@ -941,7 +959,7 @@ func headingStart(line string) (int, string, string, bool) {
 }
 
 func thematicBreak(line string) bool {
-	index := leadingSpaces(line)
+	index := blockIndent(line)
 	if index > 3 {
 		return false
 	}
@@ -973,13 +991,13 @@ func thematicBreak(line string) bool {
 }
 
 func blockquoteStart(line string) bool {
-	index := leadingSpaces(line)
+	index := blockIndent(line)
 
 	return index <= 3 && index < len(line) && line[index] == '>'
 }
 
 func stripBlockquote(line string) string {
-	index := leadingSpaces(line)
+	index := blockIndent(line)
 	if index > 3 || index >= len(line) || line[index] != '>' {
 		return line
 	}
@@ -1115,7 +1133,10 @@ func isBlank(line string) bool {
 	return strings.TrimSpace(line) == ""
 }
 
-func leadingSpaces(line string) int {
+// blockIndent returns the leading-space width of a block marker, capped at 4.
+// Callers use it to reject indentation beyond three spaces; it is not a
+// general-purpose indentation counter.
+func blockIndent(line string) int {
 	index := 0
 	for index < len(line) && index < 4 && line[index] == ' ' {
 		index++
@@ -1176,9 +1197,4 @@ func trimTrailingBlank(lines []string) []string {
 	}
 
 	return lines
-}
-
-// htmlUnescape is used by the inline parser for entities such as &amp;.
-func htmlUnescape(value string) string {
-	return html.UnescapeString(value)
 }

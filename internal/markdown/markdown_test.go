@@ -84,6 +84,18 @@ func TestUnsafeLinkIsNeutralised(t *testing.T) {
 	}
 }
 
+func TestUnsafeImageIsNeutralised(t *testing.T) {
+	html := render("![bad](javascript:alert(1))\n")
+
+	if strings.Contains(html, "javascript:") {
+		t.Errorf("javascript image survived: %s", html)
+	}
+
+	if !strings.Contains(html, `src=""`) {
+		t.Errorf("unsafe image was not neutralised: %s", html)
+	}
+}
+
 func TestCodeFenceKeepsContainerMarkers(t *testing.T) {
 	source := strings.Join([]string{
 		"::: warning",

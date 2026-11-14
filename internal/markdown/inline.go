@@ -1,6 +1,7 @@
 package markdown
 
 import (
+	"html"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -500,7 +501,7 @@ func parseEntity(value string, start int) (string, int, bool) {
 	}
 
 	candidate := value[start : start+end+1]
-	decoded := htmlUnescape(candidate)
+	decoded := html.UnescapeString(candidate)
 
 	if decoded == candidate {
 		return "", start, false
