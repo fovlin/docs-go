@@ -224,7 +224,7 @@ func parseDelimiter(value string, start int) (inline, int, bool) {
 		}
 	}
 
-	if end, ok := findClosingDelimiter(value, start+1, char, 1); ok {
+	if end, ok := findClosingDelimiter(value, start+count, char, 1); ok {
 		inner := parseInlineSegment(value[start+1 : end])
 
 		return inline{kind: inlineEmphasis, children: inner}, end + 1, true

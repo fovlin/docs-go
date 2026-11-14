@@ -298,3 +298,20 @@ func TestRawHTMLBlockStopsAtClosingMarker(t *testing.T) {
 		t.Errorf("self-closing HTML block consumed following markdown: %s", selfClosing)
 	}
 }
+
+func TestEmphasisDelimiters(t *testing.T) {
+	cases := []struct{ in, want string }{
+		{"__A__ 与 __B\n", "<strong>A</strong> 与 __B"},
+		{"__init__ 和 __main__\n", "<strong>init</strong> 和 <strong>main</strong>"},
+		{"___c___\n", "<strong><em>c</em></strong>"},
+		{"a_b_c\n", "a_b_c"},
+		{"a ** b\n", "a ** b"},
+		{"*i* 和 __s__\n", "<em>i</em> 和 <strong>s</strong>"},
+	}
+
+	for _, tc := range cases {
+		if got := render(tc.in); !strings.Contains(got, tc.want) {
+			t.Errorf("%q = %q, want it to contain %q", tc.in, got, tc.want)
+		}
+	}
+}
