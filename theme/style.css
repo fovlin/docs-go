@@ -999,7 +999,7 @@ svg {
 	flex-wrap: wrap;
 	gap: 18px;
 	margin-top: 48px;
-	padding-bottom: 18px;
+	padding-bottom: 12px;
 	border-bottom: 1px solid var(--border);
 	color: var(--faint);
 	font-size: 13px;
