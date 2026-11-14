@@ -407,27 +407,10 @@ func (p *parser) parseTable(lines []string, start int) (block, int) {
 		aligns = []string{""}
 	}
 
-	headerCells := splitTableRow(lines[start])
-	header := block{
-		kind:   blockTableRow,
-		header: true,
+	table := block{
+		kind:     blockTable,
+		children: []block{tableRow(splitTableRow(lines[start]), aligns, true)},
 	}
-
-	for index, align := range aligns {
-		cellText := ""
-		if index < len(headerCells) {
-			cellText = headerCells[index]
-		}
-
-		header.children = append(header.children, block{
-			kind:    blockTableCell,
-			align:   align,
-			inlines: parseInline(cellText),
-		})
-	}
-
-	table := block{kind: blockTable}
-	table.children = append(table.children, header)
 
 	i := start + 2
 	for i < len(lines) {
@@ -435,27 +418,30 @@ func (p *parser) parseTable(lines []string, start int) (block, int) {
 			break
 		}
 
-		cells := splitTableRow(lines[i])
-		row := block{kind: blockTableRow}
-
-		for index, align := range aligns {
-			cellText := ""
-			if index < len(cells) {
-				cellText = cells[index]
-			}
-
-			row.children = append(row.children, block{
-				kind:    blockTableCell,
-				align:   align,
-				inlines: parseInline(cellText),
-			})
-		}
-
-		table.children = append(table.children, row)
+		table.children = append(table.children, tableRow(splitTableRow(lines[i]), aligns, false))
 		i++
 	}
 
 	return table, i
+}
+
+func tableRow(cells, aligns []string, header bool) block {
+	row := block{kind: blockTableRow, header: header}
+
+	for index, align := range aligns {
+		cell := ""
+		if index < len(cells) {
+			cell = cells[index]
+		}
+
+		row.children = append(row.children, block{
+			kind:    blockTableCell,
+			align:   align,
+			inlines: parseInline(cell),
+		})
+	}
+
+	return row
 }
 
 func (p *parser) containerStart(line string) (string, string, bool) {
@@ -630,23 +616,16 @@ func firstParagraphText(blocks []block) string {
 	return walk(blocks)
 }
 
-// voidHTMLElements never have a closing tag, so a raw HTML block made of one
-// ends on the line where it starts.
-var voidHTMLElements = map[string]bool{
-	"area":   true,
-	"base":   true,
-	"br":     true,
-	"col":    true,
-	"embed":  true,
-	"hr":     true,
-	"img":    true,
-	"input":  true,
-	"link":   true,
-	"meta":   true,
-	"param":  true,
-	"source": true,
-	"track":  true,
-	"wbr":    true,
+// isVoidHTMLElement reports whether name is an element without a closing tag,
+// so a raw HTML block made of one ends on the line where it starts.
+func isVoidHTMLElement(name string) bool {
+	switch name {
+	case "area", "base", "br", "col", "embed", "hr", "img", "input",
+		"link", "meta", "param", "source", "track", "wbr":
+		return true
+	}
+
+	return false
 }
 
 func isHTMLBlockStart(line string) bool {
@@ -666,7 +645,7 @@ func isHTMLBlockStart(line string) bool {
 
 	// A void element has no closing tag, so it can only be a one-line block.
 	// Treating an incomplete one as a block would swallow the rest of the file.
-	if voidHTMLElements[name] {
+	if isVoidHTMLElement(name) {
 		return closed
 	}
 
@@ -710,7 +689,7 @@ func isHTMLNameChar(char byte) bool {
 
 func collectHTMLBlock(lines []string, start int) (string, int) {
 	trimmed := strings.TrimSpace(lines[start])
-	if name, closed, ok := htmlTagName(trimmed); ok && closed && voidHTMLElements[name] {
+	if name, closed, ok := htmlTagName(trimmed); ok && closed && isVoidHTMLElement(name) {
 		return lines[start], start + 1
 	}
 
