@@ -263,10 +263,6 @@ svg {
 	background: rgba(0, 0, 0, 0.42);
 }
 
-.page-menu-backdrop[hidden] {
-	display: none;
-}
-
 .page-menu {
 	position: fixed;
 	top: calc(var(--topbar-h) + 8px);
@@ -771,7 +767,7 @@ svg {
 	margin: 0;
 	padding: 18px 20px;
 	overflow-x: auto;
-	background: transparent !important;
+	background: transparent;
 	color: var(--text);
 	font-family: var(--mono);
 	font-size: 13.5px;
@@ -1083,7 +1079,7 @@ svg {
 @media (min-width: 1241px) {
 	.page-menu,
 	.page-menu-backdrop {
-		display: none !important;
+		display: none;
 	}
 }
 
@@ -1200,7 +1196,7 @@ svg {
 
 @media (min-width: 960px) {
 	.sidebar-backdrop {
-		display: none !important;
+		display: none;
 	}
 }
 
@@ -1365,7 +1361,7 @@ svg {
 	.prev-next,
 	.doc-meta,
 	.copy-btn {
-		display: none !important;
+		display: none;
 	}
 
 	.shell,

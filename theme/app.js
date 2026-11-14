@@ -10,7 +10,6 @@
 	}
 
 	var data = readBootstrap() || {};
-	var base = typeof data.base === "string" ? data.base : "/";
 	var ui = data.ui || {};
 
 	var THEME_KEY = "docs-go-theme";
