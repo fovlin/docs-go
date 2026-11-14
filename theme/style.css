@@ -600,7 +600,6 @@ svg {
 
 .doc h2 {
 	padding-bottom: 0.35em;
-	border-bottom: 1px solid var(--border);
 	font-size: 26px;
 }
 
@@ -996,16 +995,16 @@ svg {
 	padding-left: 40px;
 }
 
-/* doc footer */
+/* doc meta */
 
 .doc-meta {
 	display: flex;
 	align-items: center;
 	flex-wrap: wrap;
 	gap: 18px;
-	margin-top: 44px;
-	padding-top: 18px;
-	border-top: 1px solid var(--border);
+	margin-top: 48px;
+	padding-bottom: 18px;
+	border-bottom: 1px solid var(--border);
 	color: var(--faint);
 	font-size: 13px;
 }
@@ -1077,40 +1076,6 @@ svg {
 	font-weight: 550;
 	white-space: nowrap;
 	text-overflow: ellipsis;
-}
-
-/* footer */
-
-.footer {
-	border-top: 1px solid var(--border);
-	margin-top: auto;
-}
-
-.footer-inner {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	gap: 24px;
-	max-width: var(--shell-w);
-	margin: 0 auto;
-	padding: 26px 24px;
-	color: var(--faint);
-	font-size: 13px;
-}
-
-.footer-text p {
-	margin: 0;
-	line-height: 1.6;
-}
-
-.footer-built {
-	margin: 0;
-	white-space: nowrap;
-}
-
-.footer-built span {
-	color: var(--muted);
-	font-family: var(--mono);
 }
 
 /* responsive */
@@ -1293,12 +1258,6 @@ svg {
 		text-align: left;
 	}
 
-	.footer-inner {
-		flex-direction: column;
-		align-items: flex-start;
-		gap: 10px;
-		padding: 22px 18px;
-	}
 }
 
 @media (max-width: 360px) {
@@ -1403,7 +1362,6 @@ svg {
 	.topbar,
 	.sidebar,
 	.outline,
-	.footer,
 	.prev-next,
 	.doc-meta,
 	.copy-btn {

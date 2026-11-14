@@ -16,8 +16,8 @@ options:
   -c, --config <file>   config file (default: docs.json)
   -s, --src <dir>       override src_dir
   -o, --out <dir>       override out_dir
-  -a, --addr <ip>       dev listen address (default: 0.0.0.0)
-  -p, --port <port>     dev listen port (default: 8080)
+  -a, --addr <ip>       dev listen address (default: localhost)
+  -p, --port <port>     dev listen port (default: 7280)
   -f, --force           overwrite scaffold files in init
   -q, --quiet           quiet output
 

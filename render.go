@@ -80,8 +80,6 @@ func (app *App) fillPageChrome(state *RenderState) {
 	state.LogoURL = app.publicURL(app.Logo)
 	state.PrevText = app.PrevText
 	state.NextText = app.NextText
-	state.FooterMessage = app.Footer.Message
-	state.FooterCopyright = app.Footer.Copyright
 	state.Bootstrap = app.Bootstrap
 	state.Version = version
 

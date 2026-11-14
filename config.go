@@ -42,7 +42,6 @@ type Config struct {
 
 	Nav         []NavItem    `json:"nav"`
 	SocialLinks []SocialLink `json:"social_links"`
-	Footer      FooterConfig `json:"footer"`
 	UI          UIConfig     `json:"ui"`
 
 	Outline     OutlineConfig     `json:"outline"`
@@ -64,11 +63,6 @@ type SocialLink struct {
 	Icon  string `json:"icon"`
 	Link  string `json:"link"`
 	Label string `json:"label"`
-}
-
-type FooterConfig struct {
-	Message   string `json:"message"`
-	Copyright string `json:"copyright"`
 }
 
 type UIConfig struct {

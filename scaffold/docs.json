@@ -3,6 +3,7 @@
   "description": "A documentation site built with docs-go.",
   "lang": "en",
   "base": "/",
+  "edit_link": "https://github.com/fovlin/docs-go/",
   "src_dir": "docs",
   "out_dir": "dist",
   "public_dir": "public",
@@ -15,10 +16,6 @@
   "social_links": [
     { "icon": "github", "link": "https://github.com/fovlin/docs-go", "label": "GitHub" }
   ],
-  "footer": {
-    "message": "Built with docs-go.",
-    "copyright": ""
-  },
   "outline": {
     "label": "On this page",
     "level": [2, 3]

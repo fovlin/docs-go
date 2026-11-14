@@ -11,7 +11,8 @@
 - **Two config files.** `docs.json` for the site and `sidebar.json` for
   navigation, kept separate on purpose.
 - **A real static site.** Every page is an HTML file. JavaScript only adds
-  theme switching, copy buttons, the mobile drawer and the outline scrollspy.
+  theme switching, copy buttons, the mobile drawer, the page menu and the
+  outline scrollspy.
 - **A useful dev server.** Clean URLs, a 404 page and on-demand page rendering.
   Refresh the browser after editing; no background disk scan.
 
@@ -27,8 +28,9 @@ cd my-docs
 docs-go dev
 ```
 
-Open <http://localhost:8080/>. Refresh the browser after editing a file under
-`docs/`; the page is read from disk on every request.
+Open <http://localhost:7280/>. Refresh the browser after editing a file under
+`docs/`; the page is read from disk on every request. Changes to `docs.json`
+and `sidebar.json` are picked up on the next request.
 
 To build once:
 
@@ -56,7 +58,7 @@ my-docs/
 ## Configuration
 
 `docs.json` covers the title, description, language, base path, directories,
-navigation, theme and footer. Every field is optional; missing fields use
+navigation and theme. Every field is optional; missing fields use
 defaults. Paths are relative to the project directory.
 
 `sidebar.json` is a separate file. It accepts one array for every page:
@@ -112,8 +114,8 @@ docs-go <command> [options] [project]
 | `-c, --config <file>` | Config file, default `docs.json`. |
 | `-s, --src <dir>` | Override `src_dir`. |
 | `-o, --out <dir>` | Override `out_dir`. |
-| `-a, --addr <ip>` | Listen address for `dev` (default `0.0.0.0`). |
-| `-p, --port <port>` | Listen port for `dev` (default `8080`). |
+| `-a, --addr <ip>` | Listen address for `dev` (default `localhost`). |
+| `-p, --port <port>` | Listen port for `dev` (default `7280`). |
 | `-f, --force` | Overwrite scaffold files in `init`. |
 | `-q, --quiet` | Do not print progress. |
 | `-v, --version` | Print the version. |
@@ -121,14 +123,16 @@ docs-go <command> [options] [project]
 
 ## Features
 
-- Top navigation with active state, social links and a logo or built-in mark.
+- Top navigation with active state, social links and an optional logo. No
+  placeholder logo is rendered when `logo` is omitted.
 - Sidebar groups, nesting, collapsible sections, longest-prefix selection and
-  automatic opening of the active group.
+  automatic opening of the active group. Sidebars may link to pages in other
+  sidebars; the destination uses its own matching sidebar.
 - Right-hand outline with scrollspy; levels configurable globally.
 - Plain `<pre><code>` blocks with a copy button. No syntax highlighting, no
   line numbers and no code themes.
 - A native Markdown subset: tables, task lists, strikethrough, autolinks,
-  heading anchors, nested lists and blockquotes.
+  heading anchors, nested lists, blockquotes and limited raw HTML blocks.
 - VitePress-style `::: tip`, `info`, `note`, `warning`, `danger` and `details`
   blocks, including nested ones.
 - No frontmatter. The first H1 is the page title and the first paragraph is the
@@ -138,7 +142,8 @@ docs-go <command> [options] [project]
 - Clean URLs, configurable base path, canonical URLs, `404.html` and an
   optional `sitemap.xml`.
 - Direct output generation: `dist/` is cleared and rewritten on each build.
-- A dev server that renders individual pages from source on request.
+- A dev server that renders individual pages from source on request and
+  reloads config/sidebar snapshots without a full rebuild.
 
 ## Build
 

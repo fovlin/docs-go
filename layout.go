@@ -88,7 +88,6 @@ func layoutValues(page *RenderState) map[string]string {
 		"DocMeta":          docMeta(page),
 		"PrevNext":         prevNext(page),
 		"Outline":          outlineHTML(page),
-		"FooterText":       footerText(page),
 	}
 }
 
@@ -358,17 +357,6 @@ func pageMenu(page *RenderState) string {
 		b.WriteString("</div>\n")
 	}
 	b.WriteString("</div>\n")
-	return b.String()
-}
-
-func footerText(page *RenderState) string {
-	var b strings.Builder
-	if page.FooterMessage != "" {
-		fmt.Fprintf(&b, "<p>%s</p>\n", escapeHTML(page.FooterMessage))
-	}
-	if page.FooterCopyright != "" {
-		fmt.Fprintf(&b, "<p>%s</p>\n", escapeHTML(page.FooterCopyright))
-	}
 	return b.String()
 }
 

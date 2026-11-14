@@ -43,22 +43,20 @@ type RenderState struct {
 	Config Config
 	UI     UIConfig
 
-	Title           string
-	Canonical       string
-	Lang            string
-	Appearance      string
-	HomeURL         string
-	StyleURL        string
-	InitURL         string
-	AppURL          string
-	FaviconURL      string
-	LogoURL         string
-	PrevText        string
-	NextText        string
-	FooterMessage   string
-	FooterCopyright string
-	Bootstrap       string
-	Version         string
+	Title      string
+	Canonical  string
+	Lang       string
+	Appearance string
+	HomeURL    string
+	StyleURL   string
+	InitURL    string
+	AppURL     string
+	FaviconURL string
+	LogoURL    string
+	PrevText   string
+	NextText   string
+	Bootstrap  string
+	Version    string
 }
 
 func pageURL(sourcePath string, cleanURLs bool) string {
