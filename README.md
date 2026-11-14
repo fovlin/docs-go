@@ -145,6 +145,29 @@ docs-go <command> [options] [project]
 - A dev server that renders individual pages from source on request and
   reloads config/sidebar snapshots without a full rebuild.
 
+## Markdown subset
+
+The parser is deliberately small. Anything outside this list is not an error;
+it renders as plain text instead.
+
+- ATX headings (`#` to `######`), GitHub-style anchors, duplicate suffixes and
+  optional explicit `{#custom-id}`.
+- Paragraphs, entity references, inline code, emphasis, strong and
+  strikethrough.
+- Links, images, angle autolinks such as `<https://example.com>` and bare
+  `http://` / `https://` URLs.
+- Fenced code blocks (backticks or tildes), blockquotes and thematic breaks.
+- Ordered and unordered lists, nested lists, loose/tight items and task lists.
+- GFM-style tables with column alignment.
+- Raw HTML blocks and inline tags. Block boundaries are heuristic: a
+  multi-line block should end with a closing tag line.
+- `::: tip`, `::: info`, `::: note`, `::: warning`, `::: danger` and
+  `::: details` containers, including nested containers.
+- HTML comments, doctypes and processing instructions pass through as-is.
+
+Not supported: setext headings, indented code blocks, reference links and
+definitions, footnotes, and links nested inside links.
+
 ## Build
 
 ```bash
