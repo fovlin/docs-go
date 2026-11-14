@@ -299,6 +299,55 @@ func TestRawHTMLBlockStopsAtClosingMarker(t *testing.T) {
 	}
 }
 
+func TestAutolinkAtLineStartIsNotAnHTMLBlock(t *testing.T) {
+	html := render("<https://example.com>\n\nAfter\n")
+
+	if !strings.Contains(html, `<p><a href="https://example.com">https://example.com</a></p>`) {
+		t.Errorf("line-start autolink was not parsed: %s", html)
+	}
+
+	if !strings.Contains(html, "<p>After</p>") {
+		t.Errorf("autolink swallowed following markdown: %s", html)
+	}
+}
+
+func TestVoidHTMLBlockStopsAtItsOwnLine(t *testing.T) {
+	for _, tag := range []string{"<hr>", "<br>", `<img src="/x.png">`} {
+		html := render(tag + "\n\nAfter\n")
+
+		if !strings.Contains(html, tag) {
+			t.Errorf("%s was not preserved: %s", tag, html)
+		}
+
+		if !strings.Contains(html, "<p>After</p>") {
+			t.Errorf("%s swallowed following markdown: %s", tag, html)
+		}
+	}
+}
+
+func TestTextStartingWithAngleIsParagraph(t *testing.T) {
+	html := render("<3 is love\n\nAfter\n")
+
+	if !strings.Contains(html, "<p>&lt;3 is love</p>") {
+		t.Errorf("angle text was treated as HTML: %s", html)
+	}
+
+	if !strings.Contains(html, "<p>After</p>") {
+		t.Errorf("angle text swallowed following markdown: %s", html)
+	}
+}
+
+func TestExplicitHeadingIDAvoidsGeneratedIDs(t *testing.T) {
+	document := Parse([]byte("# A\n\n# A\n\n# B {#a-1}\n"), Options{})
+
+	expected := []string{"a", "a-1", "a-1-1"}
+	for index, id := range expected {
+		if document.Headings[index].ID != id {
+			t.Errorf("heading %d ID = %q, want %q", index, document.Headings[index].ID, id)
+		}
+	}
+}
+
 func TestEmphasisDelimiters(t *testing.T) {
 	cases := []struct{ in, want string }{
 		{"__A__ 与 __B\n", "<strong>A</strong> 与 __B"},

@@ -77,9 +77,7 @@ func (app *App) titleFor(page *Page) string {
 
 	title := ""
 	if data, err := os.ReadFile(page.AbsPath); err == nil {
-		if parsed, err := parseMarkdown(data, app.Config); err == nil {
-			title = parsed.FirstH1
-		}
+		title = parseMarkdown(data, app.Config).FirstH1
 	}
 	if title == "" {
 		title = humanizeTitle(page.SourcePath)

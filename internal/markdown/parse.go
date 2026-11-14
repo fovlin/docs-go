@@ -1,3 +1,8 @@
+// Package markdown parses the Markdown subset used by docs-go.
+//
+// It is intentionally forgiving: unknown or malformed syntax degrades to
+// text. Blocks, inline spans and rendering are separate passes, so a new
+// construct stays local: one recognizer, one block kind, one render case.
 package markdown
 
 import (
@@ -74,10 +79,10 @@ type block struct {
 }
 
 type parser struct {
-	labels     map[string]string
-	headingIDs map[string]int
-	headings   []Heading
-	firstH1    string
+	labels         map[string]string
+	usedHeadingIDs map[string]bool
+	headings       []Heading
+	firstH1        string
 }
 
 // Parse converts Markdown source into a document. It never returns an error:
@@ -89,8 +94,8 @@ func Parse(source []byte, opts Options) *Document {
 	text = strings.ReplaceAll(text, "\r", "\n")
 
 	p := &parser{
-		labels:     opts.Containers,
-		headingIDs: make(map[string]int),
+		labels:         opts.Containers,
+		usedHeadingIDs: make(map[string]bool),
 	}
 
 	blocks := p.parseBlocks(strings.Split(text, "\n"))
@@ -217,23 +222,7 @@ func (p *parser) parseBlocks(lines []string) []block {
 }
 
 func (p *parser) startsBlock(line string) bool {
-	if isBlank(line) || thematicBreak(line) {
-		return true
-	}
-
-	if _, _, _, ok := headingStart(line); ok {
-		return true
-	}
-
-	if _, _, _, ok := fenceStart(line); ok {
-		return true
-	}
-
-	if blockquoteStart(line) {
-		return true
-	}
-
-	if _, ok := parseListMarker(line); ok {
+	if startsBlockLine(line) {
 		return true
 	}
 
@@ -241,11 +230,7 @@ func (p *parser) startsBlock(line string) bool {
 		return true
 	}
 
-	if isHTMLBlockStart(line) {
-		return true
-	}
-
-	return false
+	return isHTMLBlockStart(line)
 }
 
 func parseFence(lines []string, start int, char byte, length int, info string) (string, string, int) {
@@ -566,14 +551,14 @@ func (p *parser) uniqueHeadingID(explicit string, text string) string {
 		base = "section"
 	}
 
-	count := p.headingIDs[base]
-	p.headingIDs[base] = count + 1
-
-	if count == 0 {
-		return base
+	id := base
+	for count := 1; p.usedHeadingIDs[id]; count++ {
+		id = base + "-" + strconv.Itoa(count)
 	}
 
-	return base + "-" + strconv.Itoa(count)
+	p.usedHeadingIDs[id] = true
+
+	return id
 }
 
 func slugifyHeading(value string) string {
@@ -641,11 +626,87 @@ func firstParagraphText(blocks []block) string {
 	return walk(blocks)
 }
 
+// voidHTMLElements never have a closing tag, so a raw HTML block made of one
+// ends on the line where it starts.
+var voidHTMLElements = map[string]bool{
+	"area":   true,
+	"base":   true,
+	"br":     true,
+	"col":    true,
+	"embed":  true,
+	"hr":     true,
+	"img":    true,
+	"input":  true,
+	"link":   true,
+	"meta":   true,
+	"param":  true,
+	"source": true,
+	"track":  true,
+	"wbr":    true,
+}
+
 func isHTMLBlockStart(line string) bool {
-	return strings.HasPrefix(strings.TrimSpace(line), "<")
+	trimmed := strings.TrimSpace(line)
+	if !strings.HasPrefix(trimmed, "<") {
+		return false
+	}
+
+	if strings.HasPrefix(trimmed, "<!") || strings.HasPrefix(trimmed, "<?") {
+		return true
+	}
+
+	name, rest, ok := htmlTagName(trimmed)
+	if !ok {
+		return false
+	}
+
+	// A void element has no closing tag, so it can only be a one-line block.
+	// Treating an incomplete one as a block would swallow the rest of the file.
+	if voidHTMLElements[name] {
+		return strings.Contains(rest, ">")
+	}
+
+	return true
+}
+
+// htmlTagName returns the lower-case element name at the start of a tag and
+// the text after it. Autolinks such as <https://example.com> and text such as
+// <3 do not produce a tag name followed by a delimiter, so they are rejected.
+func htmlTagName(line string) (string, string, bool) {
+	rest := line[1:]
+	if strings.HasPrefix(rest, "/") {
+		rest = rest[1:]
+	}
+	if rest == "" || !isHTMLNameStart(rest[0]) {
+		return "", "", false
+	}
+
+	end := 1
+	for end < len(rest) && isHTMLNameChar(rest[end]) {
+		end++
+	}
+
+	if end < len(rest) {
+		switch rest[end] {
+		case '>', '/', ' ', '\t', '\n', '\r':
+		default:
+			return "", "", false
+		}
+	}
+
+	return strings.ToLower(rest[:end]), rest[end:], true
+}
+
+func isHTMLNameChar(char byte) bool {
+	return isHTMLNameStart(char) || (char >= '0' && char <= '9') || char == '-'
 }
 
 func collectHTMLBlock(lines []string, start int) (string, int) {
+	trimmed := strings.TrimSpace(lines[start])
+	if name, _, ok := htmlTagName(trimmed); ok && voidHTMLElements[name] {
+		return lines[start], start + 1
+	}
+
 	end := start
 	for end < len(lines) {
 		line := strings.TrimSpace(lines[end])
@@ -769,21 +830,21 @@ func parseListMarker(line string) (listMarker, bool) {
 }
 
 func taskMarker(content string) (bool, string, bool) {
-	if len(content) < 3 || content[0] != '[' || content[2] != ']' {
+	if len(content) < 4 || content[0] != '[' || content[2] != ']' {
 		return false, content, false
 	}
 
+	if content[3] != ' ' && content[3] != '\t' {
+		return false, content, false
+	}
+
+	rest := strings.TrimLeft(content[3:], " \t")
+
 	switch content[1] {
 	case ' ':
-		rest := strings.TrimLeft(content[3:], " \t")
-		if len(rest) != len(content)-3 {
-			return false, rest, true
-		}
+		return false, rest, true
 	case 'x', 'X':
-		rest := strings.TrimLeft(content[3:], " \t")
-		if len(rest) != len(content)-3 {
-			return true, rest, true
-		}
+		return true, rest, true
 	}
 
 	return false, content, false
