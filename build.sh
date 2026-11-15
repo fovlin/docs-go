@@ -27,10 +27,6 @@ go build -trimpath -o build/docs-go_windows_arm64/docs-go.exe .
 export GOOS=darwin
 go build -trimpath -o build/docs-go_darwin_arm64/docs-go .
 
-for dir in build/docs-go_*; do
-	cp -R theme "$dir/"
-done
-
 cd build
 
 names=$(ls)
