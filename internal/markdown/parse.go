@@ -574,7 +574,7 @@ func parseListMarker(line string) (listMarker, bool) {
 	switch line[index] {
 	case '-', '*', '+':
 		next := index + 1
-		if next + 1 < len(line) && line[next] != ' ' && line[next] != '\t' {
+		if next+1 < len(line) && line[next] != ' ' && line[next] != '\t' {
 			return listMarker{}, false
 		}
 
@@ -947,9 +947,10 @@ func splitTableRow(line string) []string {
 				run++
 			}
 
-			if inCode == 0 {
+			switch inCode {
+			case 0:
 				inCode = run
-			} else if inCode == run {
+			case run:
 				inCode = 0
 			}
 
