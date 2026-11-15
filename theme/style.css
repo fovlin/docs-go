@@ -8,10 +8,10 @@
 	--text: light-dark(#1b1f24, #e9e9e9);
 	--muted: light-dark(#5b636d, #a3a3a3);
 	--faint: light-dark(#858c96, #777c84);
-	--accent: #004f8f;
-	--accent-hover: light-dark(#003f73, #0063b3);
+	--accent: light-dark(#004f8f, #6cb0e0);
+	--accent-hover: light-dark(#003f73, #8ac5ee);
 	--accent-soft: light-dark(rgba(0, 79, 143, 0.09), rgba(108, 176, 224, 0.12));
-	--on-accent: #ffffff;
+	--on-accent: light-dark(#ffffff, #0b1a26);
 	--link: light-dark(#004f8f, #008fff);
 	--green: light-dark(#246b3a, #83c795);
 	--amber: light-dark(#8a5a00, #d3ae67);
@@ -839,14 +839,27 @@ svg {
 	background: var(--accent-soft);
 }
 
+.custom-block.tip .custom-block-title,
+.custom-block.info .custom-block-title {
+	color: var(--link);
+}
+
 .custom-block.warning {
 	border-left-color: var(--amber);
 	background: var(--amber-soft);
 }
 
+.custom-block.warning .custom-block-title {
+	color: var(--amber);
+}
+
 .custom-block.danger {
 	border-left-color: var(--red);
 	background: var(--red-soft);
+}
+
+.custom-block.danger .custom-block-title {
+	color: var(--red);
 }
 
 .custom-block.details {
