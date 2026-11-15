@@ -139,7 +139,7 @@ func (r *renderer) list(item block) {
 
 	fmt.Fprintf(&r.builder, "<%s", tag)
 
-	if item.ordered && item.start > 1 {
+	if item.ordered && item.start != 1 {
 		fmt.Fprintf(&r.builder, ` start="%d"`, item.start)
 	}
 

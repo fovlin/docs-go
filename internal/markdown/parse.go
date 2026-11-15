@@ -200,7 +200,7 @@ func (p *parser) parseBlocks(lines []string) []block {
 		start := i
 		i++
 
-		for i < len(lines) && !isBlank(lines[i]) && !p.interruptsParagraph(lines[i]) && !isTableStart(lines, i) {
+		for i < len(lines) && !isBlank(lines[i]) && !p.interruptsParagraph(lines, i) {
 			i++
 		}
 
@@ -213,14 +213,19 @@ func (p *parser) parseBlocks(lines []string) []block {
 	return blocks
 }
 
-// interruptsParagraph is startsBlockLine with the CommonMark exception that
-// an ordered list not starting at 1 does not split a paragraph.
-func (p *parser) interruptsParagraph(line string) bool {
-	if marker, ok := parseListMarker(line); ok && marker.ordered && marker.start != 1 {
+// startsBlock includes table starts, which need the next line to detect.
+func (p *parser) startsBlock(lines []string, index int) bool {
+	return startsBlockLine(lines[index]) || isTableStart(lines, index)
+}
+
+// interruptsParagraph is startsBlock with the CommonMark exception that an
+// ordered list not starting at 1 does not split a paragraph.
+func (p *parser) interruptsParagraph(lines []string, index int) bool {
+	if marker, ok := parseListMarker(lines[index]); ok && marker.ordered && marker.start != 1 {
 		return false
 	}
 
-	return startsBlockLine(line)
+	return p.startsBlock(lines, index)
 }
 
 func parseFence(lines []string, start int, char byte, length int, info string) (string, string, int) {
@@ -230,6 +235,7 @@ func parseFence(lines []string, start int, char byte, length int, info string) (
 	}
 
 	content := make([]string, 0, 8)
+	indent := blockIndent(lines[start])
 	i := start + 1
 
 	for i < len(lines) {
@@ -238,7 +244,7 @@ func parseFence(lines []string, start int, char byte, length int, info string) (
 			break
 		}
 
-		content = append(content, lines[i])
+		content = append(content, stripIndent(lines[i], indent))
 		i++
 	}
 
@@ -296,7 +302,7 @@ func (p *parser) collectBlockquote(lines []string, start int) ([]string, int) {
 
 		// Lazy continuation: a plain line directly after a quoted line still
 		// belongs to the quote. A new block marker ends it.
-		if !p.interruptsParagraph(line) {
+		if !p.interruptsParagraph(lines, i) {
 			inner = append(inner, line)
 			i++
 			continue
@@ -325,6 +331,7 @@ func (p *parser) parseList(lines []string, start int, first listMarker) (block, 
 			break
 		}
 
+		empty := marker.content == ""
 		itemLines := []string{marker.content}
 		i++
 
@@ -353,6 +360,12 @@ func (p *parser) parseList(lines []string, start int, first listMarker) (block, 
 					break
 				}
 
+				if empty {
+					list.tight = false
+					i = next
+					break
+				}
+
 				if indentWidth(lines[next]) < marker.contentIndent {
 					i = next
 					break
@@ -368,7 +381,11 @@ func (p *parser) parseList(lines []string, start int, first listMarker) (block, 
 				break
 			}
 
-			if indentWidth(line) < marker.contentIndent && startsBlockLine(line) {
+			if indentWidth(line) < marker.contentIndent && p.startsBlock(lines, i) {
+				break
+			}
+
+			if empty && indentWidth(line) < marker.contentIndent {
 				break
 			}
 
@@ -557,7 +574,7 @@ func parseListMarker(line string) (listMarker, bool) {
 	switch line[index] {
 	case '-', '*', '+':
 		next := index + 1
-		if next < len(line) && line[next] != ' ' && line[next] != '\t' {
+		if next + 1 < len(line) && line[next] != ' ' && line[next] != '\t' {
 			return listMarker{}, false
 		}
 

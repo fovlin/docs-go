@@ -431,3 +431,45 @@ func TestContainers(t *testing.T) {
 		t.Errorf("unknown container name should be text: %s", unknown)
 	}
 }
+
+func TestOrderedStartZero(t *testing.T) {
+	html := render("0. zero\n1. one\n")
+
+	if !strings.Contains(html, `<ol start="0">`) {
+		t.Errorf("zero start missing: %s", html)
+	}
+}
+
+func TestFenceIndent(t *testing.T) {
+	html := render("  ```\n  code\n    extra\n  ```\n")
+
+	if !strings.Contains(html, "<code>code\n  extra\n</code>") {
+		t.Errorf("fence indentation was not stripped: %s", html)
+	}
+}
+
+func TestTableAfterListAndQuote(t *testing.T) {
+	list := render("- item\n| a | b |\n| --- | --- |\n")
+	if !strings.Contains(list, "</ul>\n<table>") {
+		t.Errorf("table did not end the list: %s", list)
+	}
+
+	quote := render("> quote\n| a | b |\n| --- | --- |\n")
+	if !strings.Contains(quote, "</blockquote>\n<table>") {
+		t.Errorf("table did not end the blockquote: %s", quote)
+	}
+}
+
+func TestEmptyListItem(t *testing.T) {
+	if html := render("-\ntext\n"); !strings.Contains(html, "</ul>\n<p>text</p>") {
+		t.Errorf("text after an empty item should be outside the list: %s", html)
+	}
+
+	if html := render("-\n\n  text\n"); !strings.Contains(html, "</ul>\n<p>  text</p>") {
+		t.Errorf("indented text after an empty item should be outside the list: %s", html)
+	}
+
+	if html := render("-\n  - a\n"); !strings.Contains(html, "<li><ul>") {
+		t.Errorf("nested list under an empty item was lost: %s", html)
+	}
+}
