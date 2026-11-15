@@ -269,23 +269,19 @@ Inline links and images only. An optional title is allowed:
 
 ```text
 My GitHub account: [fovlin](https://github.com/fovlin)
-
-My blog: [fovlin blog](https://sufox.net)
 ```
 
 Result:
 
 My GitHub account: [fovlin](https://github.com/fovlin)
 
-My blog: [fovlin blog](https://sufox.net)
-
 ```text
-![Picture](https://repo.acovia.net/pictures/acovia-1.png)
+![Picture](https://sufox.net/sufox.png)
 ```
 
 Result:
 
-![Picture](https://repo.acovia.net/pictures/acovia-1.png)
+![Picture](https://sufox.net/sufox.png)
 
 ## Escapes
 
