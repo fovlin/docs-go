@@ -10,11 +10,11 @@ you are reading was generated from `docs/index.md`.
 ## Quick start
 
 ~~~bash
-docs-go build      # write the site to dist/
+docs-go build    # write the site to dist/
 docs-go dev      # build, watch for changes and preview on :8080
 ~~~
 
-xxx <https://sufox.net>
+Homepage: [sufox.net](https://sufox.net)
 
 ## Where things live
 

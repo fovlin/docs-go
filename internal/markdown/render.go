@@ -95,15 +95,11 @@ func (r *renderer) block(item block) {
 	case blockTable:
 		r.table(item)
 
-	case blockHTML:
-		r.builder.WriteString(item.text)
-		r.builder.WriteByte('\n')
+	case blockContainer:
+		r.container(item)
 
 	case blockThematicBreak:
 		r.builder.WriteString("<hr>\n")
-
-	case blockContainer:
-		r.container(item)
 	}
 }
 
@@ -147,28 +143,10 @@ func (r *renderer) list(item block) {
 		fmt.Fprintf(&r.builder, ` start="%d"`, item.start)
 	}
 
-	if item.tasks {
-		r.builder.WriteString(` class="task-list"`)
-	}
-
 	r.builder.WriteString(">\n")
 
 	for _, child := range item.children {
-		r.builder.WriteString("<li")
-
-		if child.task != nil {
-			r.builder.WriteString(` class="task-list-item"`)
-		}
-
-		r.builder.WriteString(">")
-
-		if child.task != nil {
-			if *child.task {
-				r.builder.WriteString(`<input type="checkbox" disabled checked> `)
-			} else {
-				r.builder.WriteString(`<input type="checkbox" disabled> `)
-			}
-		}
+		r.builder.WriteString("<li>")
 
 		if item.tight && len(child.children) > 0 && child.children[0].kind == blockParagraph {
 			r.inlines(child.children[0].inlines)
@@ -278,19 +256,11 @@ func (r *renderer) inlines(items []inline) {
 			r.inlines(item.children)
 			r.builder.WriteString("</strong>")
 
-		case inlineStrike:
-			r.builder.WriteString("<del>")
-			r.inlines(item.children)
-			r.builder.WriteString("</del>")
-
 		case inlineLink:
 			r.link(item)
 
 		case inlineImage:
 			r.image(item)
-
-		case inlineAutolink:
-			r.autolink(item)
 
 		case inlineHTML:
 			r.builder.WriteString(item.text)
@@ -328,12 +298,6 @@ func (r *renderer) image(item inline) {
 	}
 
 	r.builder.WriteString(">")
-}
-
-func (r *renderer) autolink(item inline) {
-	destination := r.safeDestination(item.url, false)
-
-	fmt.Fprintf(&r.builder, `<a href="%s">%s</a>`, html.EscapeString(destination), html.EscapeString(item.text))
 }
 
 // safeDestination resolves a destination and neutralises unsafe schemes.

@@ -14,7 +14,6 @@
 	--on-accent: #ffffff;
 	--link: light-dark(#004f8f, #008fff);
 	--green: light-dark(#246b3a, #83c795);
-	--green-soft: light-dark(rgba(47, 125, 50, 0.09), rgba(131, 199, 149, 0.1));
 	--amber: light-dark(#8a5a00, #d3ae67);
 	--amber-soft: light-dark(rgba(196, 132, 0, 0.1), rgba(211, 174, 103, 0.1));
 	--red: light-dark(#b3261e, #e08b8b);
@@ -25,7 +24,6 @@
 	--shadow-color: light-dark(rgba(16, 24, 40, 0.16), rgba(0, 0, 0, 0.55));
 	--shadow: 0 18px 50px var(--shadow-color);
 
-	--radius: 12px;
 	--radius-md: 10px;
 	--radius-sm: 8px;
 	--radius-xs: 5px;
@@ -810,7 +808,7 @@ svg {
 	color: var(--green);
 }
 
-/* custom containers */
+/* containers */
 
 .custom-block {
 	margin: 1.4em 0;
@@ -828,7 +826,7 @@ svg {
 	margin-bottom: 0;
 }
 
-.custom-block .custom-block-title {
+.custom-block-title {
 	margin: 0 0 6px;
 	font-size: 13px;
 	font-weight: 650;
@@ -841,31 +839,14 @@ svg {
 	background: var(--accent-soft);
 }
 
-.custom-block.tip .custom-block-title,
-.custom-block.info .custom-block-title {
-	color: var(--link);
-}
-
-.custom-block.note {
-	border-left-color: var(--border-strong);
-}
-
 .custom-block.warning {
 	border-left-color: var(--amber);
 	background: var(--amber-soft);
 }
 
-.custom-block.warning .custom-block-title {
-	color: var(--amber);
-}
-
 .custom-block.danger {
 	border-left-color: var(--red);
 	background: var(--red-soft);
-}
-
-.custom-block.danger .custom-block-title {
-	color: var(--red);
 }
 
 .custom-block.details {
@@ -876,28 +857,10 @@ svg {
 
 .custom-block.details > summary {
 	padding: 10px 16px;
-	border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
-	background: var(--surface-2);
-	font-size: 14px;
-	font-weight: 550;
 	cursor: pointer;
-	list-style: none;
-}
-
-.custom-block.details > summary::-webkit-details-marker {
-	display: none;
-}
-
-.custom-block.details > summary::before {
-	content: "▸";
-	display: inline-block;
-	margin-right: 8px;
-	color: var(--faint);
-	transition: transform 0.15s ease;
-}
-
-.custom-block.details[open] > summary::before {
-	transform: rotate(90deg);
+	background: var(--surface-2);
+	border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+	font-weight: 600;
 }
 
 .custom-block.details > :not(summary) {
@@ -907,19 +870,6 @@ svg {
 
 .custom-block.details > :last-child {
 	margin-bottom: 14px;
-}
-
-/* task lists */
-
-.doc .task-list-item,
-.doc li:has(> input[type="checkbox"]) {
-	list-style: none;
-}
-
-.doc .task-list-item input,
-.doc li:has(> input[type="checkbox"]) > input[type="checkbox"] {
-	margin: 0 0.55em 0 -1.35em;
-	vertical-align: middle;
 }
 
 /* outline */

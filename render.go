@@ -17,7 +17,7 @@ func (app *App) parsePage(page *Page) (*markdown.Document, error) {
 		return nil, fmt.Errorf("read %s: %w", page.SourcePath, err)
 	}
 
-	return parseMarkdown(data, app.Config), nil
+	return parseMarkdown(data), nil
 }
 
 func (app *App) renderPageHTML(page *Page) ([]byte, error) {

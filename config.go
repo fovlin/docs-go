@@ -44,13 +44,12 @@ type Config struct {
 	SocialLinks []SocialLink `json:"social_links"`
 	UI          UIConfig     `json:"ui"`
 
-	Outline     OutlineConfig     `json:"outline"`
-	Containers  map[string]string `json:"containers"`
-	EditLink    string            `json:"edit_link"`
-	LastUpdated bool              `json:"last_updated"`
-	PrevNext    bool              `json:"prev_next"`
-	PrevText    string            `json:"prev_text"`
-	NextText    string            `json:"next_text"`
+	Outline     OutlineConfig `json:"outline"`
+	EditLink    string        `json:"edit_link"`
+	LastUpdated bool          `json:"last_updated"`
+	PrevNext    bool          `json:"prev_next"`
+	PrevText    string        `json:"prev_text"`
+	NextText    string        `json:"next_text"`
 }
 
 type NavItem struct {
@@ -96,7 +95,6 @@ func defaults() Config {
 		SidebarFile: defaultSidebarFile,
 		Appearance:  "auto",
 		Outline:     OutlineConfig{Label: "On this page", Level: []int{2, 3}},
-		Containers:  defaultContainers(),
 		LastUpdated: true,
 		PrevNext:    true,
 		PrevText:    "Previous page",
@@ -174,15 +172,6 @@ func (config *Config) normalize() {
 	config.Outline.Label = firstNonEmpty(config.Outline.Label, "On this page")
 	config.Outline.Level = normalizeLevels(config.Outline.Level)
 
-	if config.Containers == nil {
-		config.Containers = make(map[string]string)
-	}
-	for name, label := range defaultContainers() {
-		if strings.TrimSpace(config.Containers[name]) == "" {
-			config.Containers[name] = label
-		}
-	}
-
 	config.PrevText = firstNonEmpty(config.PrevText, "Previous page")
 	config.NextText = firstNonEmpty(config.NextText, "Next page")
 
@@ -222,13 +211,6 @@ func defaultsForUI(ui *UIConfig) {
 	ui.BackHome = firstNonEmpty(ui.BackHome, "Back to home")
 	ui.Copy = firstNonEmpty(ui.Copy, "Copy")
 	ui.Copied = firstNonEmpty(ui.Copied, "Copied")
-}
-
-func defaultContainers() map[string]string {
-	return map[string]string{
-		"tip": "TIP", "info": "INFO", "note": "NOTE",
-		"warning": "WARNING", "danger": "DANGER", "details": "Details",
-	}
 }
 
 func normalizeLevels(levels []int) []int {

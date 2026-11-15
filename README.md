@@ -131,10 +131,8 @@ docs-go <command> [options] [project]
 - Right-hand outline with scrollspy; levels configurable globally.
 - Plain `<pre><code>` blocks with a copy button. No syntax highlighting, no
   line numbers and no code themes.
-- A native Markdown subset: tables, task lists, strikethrough, autolinks,
-  heading anchors, nested lists, blockquotes and limited raw HTML blocks.
-- VitePress-style `::: tip`, `info`, `note`, `warning`, `danger` and `details`
-  blocks, including nested ones.
+- A native Markdown subset: tables, heading anchors, nested lists, blockquotes,
+  callout containers and inline HTML tags.
 - No frontmatter. The first H1 is the page title and the first paragraph is the
   meta description; missing values fall back to the file name and site config.
 - Markdown links to `.md` files are rewritten to the generated pages; missing
@@ -147,26 +145,23 @@ docs-go <command> [options] [project]
 
 ## Markdown subset
 
-The parser is deliberately small. Anything outside this list is not an error;
-it renders as plain text instead.
+The parser is deliberately small. Unsupported syntax is not an error; it
+usually renders as plain text.
 
-- ATX headings (`#` to `######`), GitHub-style anchors, duplicate suffixes and
-  optional explicit `{#custom-id}`.
-- Paragraphs, entity references, inline code, emphasis, strong and
-  strikethrough.
-- Links, images, angle autolinks such as `<https://example.com>` and bare
-  `http://` / `https://` URLs.
-- Fenced code blocks (backticks or tildes), blockquotes and thematic breaks.
-- Ordered and unordered lists, nested lists, loose/tight items and task lists.
+- ATX headings (`#` to `######`), GitHub-style anchors and duplicate suffixes.
+- Paragraphs, entity references, inline code, emphasis and strong.
+- Links and images.
+- Fenced code blocks (backticks or tildes), indented code blocks, blockquotes
+  and thematic breaks.
+- Ordered and unordered lists, nested lists and loose/tight items.
 - GFM-style tables with column alignment.
-- Raw HTML blocks and inline tags. Block boundaries are heuristic: a
-  multi-line block should end with a closing tag line.
-- `::: tip`, `::: info`, `::: note`, `::: warning`, `::: danger` and
-  `::: details` containers, including nested containers.
-- HTML comments, doctypes and processing instructions pass through as-is.
+- `::: tip`-style containers (`tip`, `info`, `note`, `warning`, `danger`,
+  `details`), including nested ones.
+- Inline HTML tags inside paragraphs.
 
-Not supported: setext headings, indented code blocks, reference links and
-definitions, footnotes, and links nested inside links.
+Not supported: setext headings, reference links and definitions, footnotes,
+task lists, strikethrough, autolinks, custom container names, explicit heading
+IDs, block-level HTML, and links nested inside links.
 
 ## Build
 

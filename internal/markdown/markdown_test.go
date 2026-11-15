@@ -6,19 +6,19 @@ import (
 )
 
 func render(source string) string {
-	document := Parse([]byte(source), Options{Containers: defaultContainerLabels})
+	document := Parse([]byte(source))
 
 	return string(document.Render(nil))
 }
 
 func TestHeadingsAndIDs(t *testing.T) {
-	document := Parse([]byte("# 中文文档\n\n## 快速开始\n\n## 快速开始\n\n### Custom {#mine}\n"), Options{})
+	document := Parse([]byte("# 中文文档\n\n## 快速开始\n\n## 快速开始\n"))
 
-	if len(document.Headings) != 4 {
-		t.Fatalf("expected 4 headings, got %d", len(document.Headings))
+	if len(document.Headings) != 3 {
+		t.Fatalf("expected 3 headings, got %d", len(document.Headings))
 	}
 
-	expected := []string{"中文文档", "快速开始", "快速开始-1", "mine"}
+	expected := []string{"中文文档", "快速开始", "快速开始-1"}
 	for index, id := range expected {
 		if document.Headings[index].ID != id {
 			t.Errorf("heading %d id = %q, want %q", index, document.Headings[index].ID, id)
@@ -31,12 +31,11 @@ func TestHeadingsAndIDs(t *testing.T) {
 }
 
 func TestInlineFormatting(t *testing.T) {
-	html := render("A **bold** and *em* and ~~gone~~ and `code`.\n")
+	html := render("A **bold** and *em* and `code`.\n")
 
 	for _, expected := range []string{
 		"<strong>bold</strong>",
 		"<em>em</em>",
-		"<del>gone</del>",
 		"<code>code</code>",
 	} {
 		if !strings.Contains(html, expected) {
@@ -57,14 +56,12 @@ func TestNestedEmphasis(t *testing.T) {
 	}
 }
 
-func TestLinksImagesAutolinks(t *testing.T) {
-	html := render("[next](./next.md) ![pic](./pic.png) <https://example.com> https://example.org.\n")
+func TestLinksImages(t *testing.T) {
+	html := render("[next](./next.md) ![pic](./pic.png)\n")
 
 	for _, expected := range []string{
 		`<a href="./next.md">next</a>`,
 		`<img src="./pic.png" alt="pic">`,
-		`<a href="https://example.com">https://example.com</a>`,
-		`<a href="https://example.org">https://example.org</a>`,
 	} {
 		if !strings.Contains(html, expected) {
 			t.Errorf("missing %q in %s", expected, html)
@@ -96,59 +93,20 @@ func TestUnsafeImageIsNeutralised(t *testing.T) {
 	}
 }
 
-func TestCodeFenceKeepsContainerMarkers(t *testing.T) {
-	source := strings.Join([]string{
-		"::: warning",
-		"Before",
-		"",
-		"~~~text",
-		":::",
-		"~~~",
-		"",
-		":::",
-	}, "\n")
-
-	html := render(source)
-
-	if !strings.Contains(html, `<div class="custom-block warning">`) {
-		t.Errorf("missing container: %s", html)
-	}
-
-	if !strings.Contains(html, "<code class=\"language-text\">:::\n</code>") {
-		t.Errorf("container marker inside fence was parsed: %s", html)
-	}
-}
-
-func TestNestedContainers(t *testing.T) {
-	html := render("::: tip\nouter\n\n::: warning\ninner\n:::\n:::\n")
-
-	if strings.Count(html, `<div class="custom-block tip">`) != 1 {
-		t.Errorf("outer container missing: %s", html)
-	}
-
-	if strings.Count(html, `<div class="custom-block warning">`) != 1 {
-		t.Errorf("inner container missing: %s", html)
-	}
-}
-
-func TestListsAndTasks(t *testing.T) {
-	source := "- [x] done\n- [ ] todo\n\n1. first\n2. second\n"
-	html := render(source)
+func TestLists(t *testing.T) {
+	html := render("- first\n- second\n\n1. first\n2. second\n")
 
 	for _, expected := range []string{
-		`<ul class="task-list">`,
-		`<li class="task-list-item"><input type="checkbox" disabled checked> done</li>`,
-		`<li class="task-list-item"><input type="checkbox" disabled> todo</li>`,
-		`<ol>`,
-		`<li>first</li>`,
-		`<li>second</li>`,
+		"<ul>",
+		"<li>first</li>",
+		"<li>second</li>",
+		"<ol>",
 	} {
 		if !strings.Contains(html, expected) {
 			t.Errorf("missing %q in %s", expected, html)
 		}
 	}
 }
-
 func TestListEndsBeforeOutdentedParagraph(t *testing.T) {
 	html := render("- one\n- two\n\nAfter\n")
 
@@ -177,23 +135,6 @@ func TestNestedList(t *testing.T) {
 	}
 }
 
-func TestTable(t *testing.T) {
-	source := "| Left | Right |\n| :--- | ---: |\n| a | b |\n"
-	html := render(source)
-
-	for _, expected := range []string{
-		"<table>",
-		`<th style="text-align:left">Left</th>`,
-		`<th style="text-align:right">Right</th>`,
-		`<td style="text-align:left">a</td>`,
-		`<td style="text-align:right">b</td>`,
-	} {
-		if !strings.Contains(html, expected) {
-			t.Errorf("missing %q in %s", expected, html)
-		}
-	}
-}
-
 func TestBlockquote(t *testing.T) {
 	html := render("> quoted\n>\n> > nested\n")
 
@@ -203,14 +144,6 @@ func TestBlockquote(t *testing.T) {
 
 	if !strings.Contains(html, "<blockquote>\n<p>nested</p>") {
 		t.Errorf("nested blockquote failed: %s", html)
-	}
-}
-
-func TestRawHTMLIsPreserved(t *testing.T) {
-	html := render("<figure><img src=\"/x.png\" alt=\"x\"></figure>\n")
-
-	if !strings.Contains(html, "<figure><img src=\"/x.png\" alt=\"x\"></figure>") {
-		t.Errorf("raw HTML was changed: %s", html)
 	}
 }
 
@@ -231,7 +164,7 @@ func TestHardBreak(t *testing.T) {
 }
 
 func TestRewriteLinks(t *testing.T) {
-	document := Parse([]byte("[next](./next.md) ![pic](./pic.png)\n"), Options{})
+	document := Parse([]byte("[next](./next.md) ![pic](./pic.png)\n"))
 
 	document.RewriteLinks(func(destination string, image bool) (string, bool) {
 		if image {
@@ -253,7 +186,7 @@ func TestRewriteLinks(t *testing.T) {
 }
 
 func TestPlainTextAndFirstParagraph(t *testing.T) {
-	document := Parse([]byte("# Title\n\nFirst **paragraph** with `code`.\n\n## Section\n"), Options{})
+	document := Parse([]byte("# Title\n\nFirst **paragraph** with `code`.\n\n## Section\n"))
 
 	if document.FirstParagraph != "First paragraph with code." {
 		t.Errorf("first paragraph = %q", document.FirstParagraph)
@@ -267,74 +200,19 @@ func TestPlainTextAndFirstParagraph(t *testing.T) {
 func FuzzParse(f *testing.F) {
 	for _, seed := range []string{
 		"# heading\n\nparagraph\n",
-		"- [x] task\n- item\n",
-		"::: tip\ncontent\n:::\n",
-		"| a | b |\n| --- | --- |\n| 1 | 2 |\n",
+		"- item\n- item\n",
 		"**bold** and [link](./x.md)\n",
 		"```go\nfmt.Println(\"x\")\n```\n",
+		"    indented code\n",
+		"::: tip\ncontent\n:::\n",
 	} {
 		f.Add(seed)
 	}
 
 	f.Fuzz(func(t *testing.T, source string) {
-		document := Parse([]byte(source), Options{Containers: defaultContainerLabels})
+		document := Parse([]byte(source))
 		_ = document.Render(nil)
 	})
-}
-
-func TestRawHTMLBlockIsPreserved(t *testing.T) {
-	html := render("<figure class=\"x\">\n  <img src=\"/x.png\" alt=\"x\">\n</figure>\n\nAfter\n")
-
-	if strings.Contains(html, "<p><figure") {
-		t.Errorf("HTML block was wrapped in a paragraph: %s", html)
-	}
-
-	if !strings.Contains(html, "<figure class=\"x\">") {
-		t.Errorf("HTML block was escaped: %s", html)
-	}
-}
-
-func TestRawHTMLBlockStopsAtClosingMarker(t *testing.T) {
-	html := render("<div class=\"box\">\nfirst\n\nsecond\n</div>\n\nAfter\n")
-
-	if !strings.Contains(html, "first\n\nsecond") {
-		t.Errorf("blank line inside HTML block was lost: %s", html)
-	}
-
-	if !strings.Contains(html, "<p>After</p>") {
-		t.Errorf("markdown after the HTML block was lost: %s", html)
-	}
-
-	selfClosing := render("<hr />\n\nAfter\n")
-	if !strings.Contains(selfClosing, "<hr />") || !strings.Contains(selfClosing, "<p>After</p>") {
-		t.Errorf("self-closing HTML block consumed following markdown: %s", selfClosing)
-	}
-}
-
-func TestAutolinkAtLineStartIsNotAnHTMLBlock(t *testing.T) {
-	html := render("<https://example.com>\n\nAfter\n")
-
-	if !strings.Contains(html, `<p><a href="https://example.com">https://example.com</a></p>`) {
-		t.Errorf("line-start autolink was not parsed: %s", html)
-	}
-
-	if !strings.Contains(html, "<p>After</p>") {
-		t.Errorf("autolink swallowed following markdown: %s", html)
-	}
-}
-
-func TestVoidHTMLBlockStopsAtItsOwnLine(t *testing.T) {
-	for _, tag := range []string{"<hr>", "<br>", `<img src="/x.png">`} {
-		html := render(tag + "\n\nAfter\n")
-
-		if !strings.Contains(html, tag) {
-			t.Errorf("%s was not preserved: %s", tag, html)
-		}
-
-		if !strings.Contains(html, "<p>After</p>") {
-			t.Errorf("%s swallowed following markdown: %s", tag, html)
-		}
-	}
 }
 
 func TestTextStartingWithAngleIsParagraph(t *testing.T) {
@@ -346,17 +224,6 @@ func TestTextStartingWithAngleIsParagraph(t *testing.T) {
 
 	if !strings.Contains(html, "<p>After</p>") {
 		t.Errorf("angle text swallowed following markdown: %s", html)
-	}
-}
-
-func TestExplicitHeadingIDAvoidsGeneratedIDs(t *testing.T) {
-	document := Parse([]byte("# A\n\n# A\n\n# B {#a-1}\n"), Options{})
-
-	expected := []string{"a", "a-1", "a-1-1"}
-	for index, id := range expected {
-		if document.Headings[index].ID != id {
-			t.Errorf("heading %d ID = %q, want %q", index, document.Headings[index].ID, id)
-		}
 	}
 }
 
@@ -374,5 +241,193 @@ func TestEmphasisDelimiters(t *testing.T) {
 		if got := render(tc.in); !strings.Contains(got, tc.want) {
 			t.Errorf("%q = %q, want it to contain %q", tc.in, got, tc.want)
 		}
+	}
+}
+
+func TestInlineHTMLStaysInline(t *testing.T) {
+	html := render("<kbd>Ctrl</kbd> + C\n\n# Heading\n")
+
+	if !strings.Contains(html, "<p><kbd>Ctrl</kbd> + C</p>") {
+		t.Errorf("inline HTML swallowed the paragraph: %s", html)
+	}
+
+	if !strings.Contains(html, `<h1 id="heading">`) {
+		t.Errorf("following heading was swallowed: %s", html)
+	}
+}
+
+func TestListIndentation(t *testing.T) {
+	cases := []struct {
+		source string
+		lists  int
+		want   string
+	}{
+		{"- a\n - b\n", 1, "<li>a</li>\n<li>b</li>"},
+		{"- a\n  - b\n - c\n", 2, "</ul>\n</li>\n<li>c</li>"},
+		{"- a\n\n text\n", 1, "</ul>\n<p> text</p>"},
+	}
+
+	for _, tc := range cases {
+		html := render(tc.source)
+
+		if got := strings.Count(html, "<ul>") + strings.Count(html, "<ol>"); got != tc.lists {
+			t.Errorf("%q: got %d lists, want %d", tc.source, got, tc.lists)
+		}
+
+		if !strings.Contains(html, tc.want) {
+			t.Errorf("%q: missing %q", tc.source, tc.want)
+		}
+	}
+}
+
+func TestIndentedCode(t *testing.T) {
+	html := render("    code\n    more\n\nAfter\n")
+
+	if !strings.Contains(html, "<code>code\nmore\n</code>") {
+		t.Errorf("indented code block missing: %s", html)
+	}
+
+	if !strings.Contains(html, "<p>After</p>") {
+		t.Errorf("paragraph after code block missing: %s", html)
+	}
+
+	if tabbed := render("\tcode\n"); !strings.Contains(tabbed, "<code>code\n</code>") {
+		t.Errorf("tab-indented code block missing: %s", tabbed)
+	}
+
+	if paragraph := render("text\n    still text\n"); strings.Contains(paragraph, "<code>") {
+		t.Errorf("indented line broke a paragraph: %s", paragraph)
+	}
+}
+
+func TestTable(t *testing.T) {
+	html := render("| Left | Right |\n| :--- | ---: |\n| a | b |\n")
+
+	for _, expected := range []string{
+		"<table>",
+		`<th style="text-align:left">Left</th>`,
+		`<td style="text-align:right">b</td>`,
+	} {
+		if !strings.Contains(html, expected) {
+			t.Errorf("missing %q in %s", expected, html)
+		}
+	}
+}
+
+func TestListMarkers(t *testing.T) {
+	if html := render("- a\n* b\n"); strings.Count(html, "<ul>") != 2 {
+		t.Errorf("different bullet markers should start a new list: %s", html)
+	}
+
+	if html := render("1. a\n1) b\n"); strings.Count(html, "<ol>") != 2 {
+		t.Errorf("different ordered markers should start a new list: %s", html)
+	}
+
+	if html := render("text\n2. item\n"); strings.Contains(html, "<ol") {
+		t.Errorf("ordered list above 1 split a paragraph: %s", html)
+	}
+
+	if html := render("-\n- a\n"); !strings.Contains(html, "<li></li>") {
+		t.Errorf("empty list item missing: %s", html)
+	}
+}
+
+func TestBlockquoteBoundaries(t *testing.T) {
+	html := render("> one\n\n> two\n")
+
+	if strings.Count(html, "<blockquote>") != 2 {
+		t.Errorf("blank line should start a new blockquote: %s", html)
+	}
+
+	multi := render("> one\n>\n> two\n")
+	if !strings.Contains(multi, "<p>one</p>\n<p>two</p>") {
+		t.Errorf("quoted blank line should keep one blockquote: %s", multi)
+	}
+}
+
+func TestTableCells(t *testing.T) {
+	html := render("| a | b |\n| --- | --- |\n| \\*x\\* | ``y|z`` |\n")
+
+	for _, expected := range []string{"<td>*x*</td>", "<code>y|z</code>"} {
+		if !strings.Contains(html, expected) {
+			t.Errorf("missing %q in %s", expected, html)
+		}
+	}
+
+	if bad := render("| a | b | c |\n| --- | --- |\n| 1 | 2 | 3 |\n"); strings.Contains(bad, "<table>") {
+		t.Errorf("mismatched header should not be a table: %s", bad)
+	}
+
+	if heading := render("| a | b |\n| --- | --- |\n## Next | section\n"); !strings.Contains(heading, `<h2 id="next-section">`) {
+		t.Errorf("table did not end before a heading: %s", heading)
+	}
+}
+
+func TestInlineHTML(t *testing.T) {
+	html := render("<span>**bold**</span>\n")
+
+	if !strings.Contains(html, "<p><span><strong>bold</strong></span></p>") {
+		t.Errorf("inline HTML should stay in a paragraph: %s", html)
+	}
+}
+
+func TestDocumentedVariants(t *testing.T) {
+	if html := render("~~~go\nfmt.Println(1)\n~~~\n"); !strings.Contains(html, `class="language-go"`) {
+		t.Errorf("tilde fence missing: %s", html)
+	}
+
+	if html := render("___\n"); !strings.Contains(html, "<hr>") {
+		t.Errorf("underscore thematic break missing: %s", html)
+	}
+
+	if html := render("[x](/x \"title\")\n"); !strings.Contains(html, `title="title"`) {
+		t.Errorf("link title missing: %s", html)
+	}
+}
+
+func TestFencedCode(t *testing.T) {
+	cases := []string{
+		"```go\nfmt.Println(1)\n```\n",
+		"~~~go\nfmt.Println(1)\n~~~\n",
+	}
+
+	for _, source := range cases {
+		if html := render(source); !strings.Contains(html, `class="language-go"`) {
+			t.Errorf("fenced code missing for %q: %s", source, html)
+		}
+	}
+}
+
+func TestContainers(t *testing.T) {
+	html := render("::: tip\nhello\n:::\n")
+	for _, expected := range []string{`<div class="custom-block tip">`, `<p class="custom-block-title">TIP</p>`, "<p>hello</p>"} {
+		if !strings.Contains(html, expected) {
+			t.Errorf("missing %q in:\n%s", expected, html)
+		}
+	}
+
+	custom := render("::: warning Watch out\nbody\n:::\n")
+	if !strings.Contains(custom, `<p class="custom-block-title">Watch out</p>`) {
+		t.Errorf("custom title missing: %s", custom)
+	}
+
+	nested := render("::: tip\n::: warning\ninner\n:::\n:::\n")
+	if strings.Count(nested, `<div class="custom-block tip">`) != 1 || strings.Count(nested, `<div class="custom-block warning">`) != 1 {
+		t.Errorf("nested containers missing: %s", nested)
+	}
+
+	code := render("::: tip\n```text\n:::\n```\n:::\n")
+	if !strings.Contains(code, ":::\n</code>") {
+		t.Errorf("container marker inside fence was parsed: %s", code)
+	}
+
+	details := render("::: details\nhidden\n:::\n")
+	if !strings.Contains(details, `<details class="custom-block details">`) || !strings.Contains(details, "<summary") {
+		t.Errorf("details container missing: %s", details)
+	}
+
+	unknown := render("::: custom\nbody\n:::\n")
+	if strings.Contains(unknown, "custom-block") {
+		t.Errorf("unknown container name should be text: %s", unknown)
 	}
 }

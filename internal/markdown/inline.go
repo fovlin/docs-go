@@ -14,10 +14,8 @@ const (
 	inlineCode
 	inlineEmphasis
 	inlineStrong
-	inlineStrike
 	inlineLink
 	inlineImage
-	inlineAutolink
 	inlineSoftBreak
 	inlineHardBreak
 	inlineHTML
@@ -67,7 +65,7 @@ func parseInlineSegment(value string) []inline {
 			items = append(items, inline{kind: inlineText, text: value[i : i+count]})
 			i += count
 
-		case '*', '_', '~':
+		case '*', '_':
 			if item, next, ok := parseDelimiter(value, i); ok {
 				items = append(items, item)
 				i = next
@@ -100,11 +98,6 @@ func parseInlineSegment(value string) []inline {
 			i++
 
 		case '<':
-			if item, next, ok := parseAngleAutolink(value, i); ok {
-				items = append(items, item)
-				i = next
-				continue
-			}
 			if item, next, ok := parseHTMLInline(value, i); ok {
 				items = append(items, item)
 				i = next
@@ -137,20 +130,10 @@ func parseInlineSegment(value string) []inline {
 			i++
 
 		default:
-			if item, next, ok := parseBareAutolink(value, i); ok {
-				items = append(items, item)
-				i = next
-				continue
-			}
-
 			start := i
 			i++
 
 			for i < len(value) && !isInlineSpecial(value[i]) {
-				if i > start && urlBoundary(value[i-1]) && looksLikeURL(value[i:]) {
-					break
-				}
-
 				i++
 			}
 
@@ -200,20 +183,6 @@ func parseDelimiter(value string, start int) (inline, int, bool) {
 	next := nextRune(value, start+count)
 
 	if !delimiterCanOpen(char, previous, next) {
-		return inline{}, start, false
-	}
-
-	if char == '~' {
-		if count < 2 {
-			return inline{}, start, false
-		}
-
-		if end, ok := findClosingDelimiter(value, start+2, char, 2); ok {
-			inner := parseInlineSegment(value[start+2 : end])
-
-			return inline{kind: inlineStrike, children: inner}, end + 2, true
-		}
-
 		return inline{}, start, false
 	}
 
@@ -437,63 +406,6 @@ func parseLinkTarget(value string, start int) (string, string, int, bool) {
 	return destination, title, index + 1, true
 }
 
-func parseAngleAutolink(value string, start int) (inline, int, bool) {
-	end := strings.IndexByte(value[start+1:], '>')
-	if end < 0 {
-		return inline{}, start, false
-	}
-
-	end += start + 1
-	content := value[start+1 : end]
-
-	if content == "" || strings.ContainsAny(content, " \t\n") {
-		return inline{}, start, false
-	}
-
-	lower := strings.ToLower(content)
-
-	switch {
-	case strings.HasPrefix(lower, "http://"), strings.HasPrefix(lower, "https://"), strings.HasPrefix(lower, "mailto:"):
-		return inline{kind: inlineAutolink, text: content, url: content}, end + 1, true
-
-	case looksLikeEmail(content):
-		return inline{kind: inlineAutolink, text: content, url: "mailto:" + content}, end + 1, true
-	}
-
-	return inline{}, start, false
-}
-
-func parseBareAutolink(value string, start int) (inline, int, bool) {
-	if !looksLikeURL(value[start:]) {
-		return inline{}, start, false
-	}
-
-	if start > 0 && !urlBoundary(value[start-1]) {
-		return inline{}, start, false
-	}
-
-	end := start
-	for end < len(value) && value[end] != ' ' && value[end] != '\t' && value[end] != '\n' && value[end] != '<' && value[end] != '>' {
-		end++
-	}
-
-	for end > start && strings.ContainsRune(".,;:!?", rune(value[end-1])) {
-		end--
-	}
-
-	for end > start && value[end-1] == ')' && !strings.Contains(value[start:end], "(") {
-		end--
-	}
-
-	if end == start {
-		return inline{}, start, false
-	}
-
-	url := value[start:end]
-
-	return inline{kind: inlineAutolink, text: url, url: url}, end, true
-}
-
 func parseEntity(value string, start int) (string, int, bool) {
 	end := strings.IndexByte(value[start:], ';')
 	if end < 0 || end > 32 {
@@ -561,31 +473,7 @@ func isEscapable(value byte) bool {
 
 func isInlineSpecial(value byte) bool {
 	switch value {
-	case '\\', '`', '*', '_', '~', '[', '!', '<', '&', '\n':
-		return true
-	}
-
-	return false
-}
-
-func looksLikeURL(value string) bool {
-	return strings.HasPrefix(value, "http://") || strings.HasPrefix(value, "https://")
-}
-
-func looksLikeEmail(value string) bool {
-	at := strings.IndexByte(value, '@')
-	if at <= 0 || at == len(value)-1 || strings.ContainsAny(value, " \t\n") {
-		return false
-	}
-
-	domain := value[at+1:]
-
-	return strings.Contains(domain, ".") && !strings.HasPrefix(domain, ".") && !strings.HasSuffix(domain, ".")
-}
-
-func urlBoundary(value byte) bool {
-	switch value {
-	case ' ', '\t', '\n', '(', '[', '<', '"', '\'', '*', '_', '~':
+	case '\\', '`', '*', '_', '[', '!', '<', '&', '\n':
 		return true
 	}
 
@@ -686,8 +574,20 @@ func parseHTMLInline(value string, start int) (inline, int, bool) {
 	if inner[0] == '/' {
 		inner = inner[1:]
 	}
-	if inner == "" || (inner[0] != '!' && !isHTMLNameStart(inner[0])) {
+	if inner == "" || !isHTMLNameStart(inner[0]) {
 		return inline{}, start, false
+	}
+
+	nameEnd := 1
+	for nameEnd < len(inner) && isHTMLNameChar(inner[nameEnd]) {
+		nameEnd++
+	}
+	if nameEnd < len(inner) {
+		switch inner[nameEnd] {
+		case '>', '/', ' ', '\t', '\n', '\r':
+		default:
+			return inline{}, start, false
+		}
 	}
 
 	return inline{kind: inlineHTML, text: raw}, end + 1, true
@@ -695,4 +595,8 @@ func parseHTMLInline(value string, start int) (inline, int, bool) {
 
 func isHTMLNameStart(char byte) bool {
 	return char >= 'a' && char <= 'z' || char >= 'A' && char <= 'Z'
+}
+
+func isHTMLNameChar(char byte) bool {
+	return isHTMLNameStart(char) || (char >= '0' && char <= '9') || char == '-'
 }
