@@ -340,24 +340,20 @@ func (p *parser) parseList(lines []string, start int, first listMarker) (block, 
 	return list, i
 }
 
-// collectListItem consumes one item until a blank line, a sibling marker or an
-// outdented block. Blank lines end the list; there are no loose items and no
-// lazy continuation lines.
+// collectListItem consumes one item until a sibling marker or an outdented
+// block. Blank lines stay inside the item and do not end the list; there are
+// no loose items and no lazy continuation lines.
 func (p *parser) collectListItem(lines []string, start int, marker listMarker) ([]string, int) {
 	itemLines := []string{marker.content}
 	i := start + 1
 
 	for i < len(lines) {
-
-		if isBlank(lines[i]) {
-			i++
-			continue
-		}
-
 		line := lines[i]
 
 		if isBlank(line) {
-			break
+			itemLines = append(itemLines, "")
+			i++
+			continue
 		}
 
 		if nextMarker, ok := parseListMarker(line); ok && nextMarker.indent < marker.contentIndent {

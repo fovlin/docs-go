@@ -119,11 +119,11 @@ func TestListEndsBeforeOutdentedParagraph(t *testing.T) {
 	}
 }
 
-func TestBlankLineEndsList(t *testing.T) {
+func TestBlankLineContinuesList(t *testing.T) {
 	html := render("- one\n\n- two\n")
 
-	if strings.Count(html, "<ul>") != 2 {
-		t.Errorf("blank line should end the list: %s", html)
+	if strings.Count(html, "<ul>") != 1 {
+		t.Errorf("blank line should not end the list: %s", html)
 	}
 
 	if !strings.Contains(html, "<li>one</li>") || !strings.Contains(html, "<li>two</li>") {

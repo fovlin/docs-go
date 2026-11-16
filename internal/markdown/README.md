@@ -119,9 +119,9 @@ Result:
 </ul>
 ```
 
-Blank lines end a list. Items are consecutive; there are no loose items and no
-lazy continuation lines. Nested lists must be indented to the item's content
-indent:
+Blank lines do not end a list; they stay inside the list context. There are no
+loose items and no lazy continuation lines. Nested lists must be indented to
+the item's content indent:
 
 ```text
 - Parent
