@@ -153,7 +153,7 @@ usually renders as plain text.
 - Links and images.
 - Fenced code blocks (backticks or tildes), indented code blocks, blockquotes
   and thematic breaks.
-- Ordered and unordered lists, nested lists and loose/tight items.
+- Ordered and unordered lists and nested lists. Blank lines end a list.
 - GFM-style tables with column alignment.
 - `::: tip`-style containers (`tip`, `info`, `note`, `warning`, `danger`,
   `details`), including nested ones.

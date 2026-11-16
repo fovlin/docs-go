@@ -148,7 +148,7 @@ func (r *renderer) list(item block) {
 	for _, child := range item.children {
 		r.builder.WriteString("<li>")
 
-		if item.tight && len(child.children) > 0 && child.children[0].kind == blockParagraph {
+		if len(child.children) > 0 && child.children[0].kind == blockParagraph {
 			r.inlines(child.children[0].inlines)
 			if len(child.children) > 1 {
 				r.builder.WriteByte('\n')

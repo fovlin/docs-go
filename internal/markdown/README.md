@@ -119,17 +119,14 @@ Result:
 </ul>
 ```
 
-### Multiple paragraphs
+Blank lines end a list. Items are consecutive; there are no loose items and no
+lazy continuation lines. Nested lists must be indented to the item's content
+indent:
 
 ```text
-- This is the first list item.
-- Here's the second list item.
-
-    I need to add another paragraph below the second list item.
-- And here's the third list item.
+- Parent
+  - Child
 ```
-
-Indent the new paragraph under the item and separate it with a blank line.
 
 ## Containers
 

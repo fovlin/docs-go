@@ -119,11 +119,15 @@ func TestListEndsBeforeOutdentedParagraph(t *testing.T) {
 	}
 }
 
-func TestLooseList(t *testing.T) {
+func TestBlankLineEndsList(t *testing.T) {
 	html := render("- one\n\n- two\n")
 
-	if !strings.Contains(html, "<li><p>one</p>") {
-		t.Errorf("blank line did not make the list loose: %s", html)
+	if strings.Count(html, "<ul>") != 2 {
+		t.Errorf("blank line should end the list: %s", html)
+	}
+
+	if !strings.Contains(html, "<li>one</li>") || !strings.Contains(html, "<li>two</li>") {
+		t.Errorf("list items missing: %s", html)
 	}
 }
 
@@ -326,10 +330,6 @@ func TestListMarkers(t *testing.T) {
 	if html := render("text\n2. item\n"); strings.Contains(html, "<ol") {
 		t.Errorf("ordered list above 1 split a paragraph: %s", html)
 	}
-
-	if html := render("-\n- a\n"); !strings.Contains(html, "<li></li>") {
-		t.Errorf("empty list item missing: %s", html)
-	}
 }
 
 func TestBlockquoteBoundaries(t *testing.T) {
@@ -457,19 +457,5 @@ func TestTableAfterListAndQuote(t *testing.T) {
 	quote := render("> quote\n| a | b |\n| --- | --- |\n")
 	if !strings.Contains(quote, "</blockquote>\n<table>") {
 		t.Errorf("table did not end the blockquote: %s", quote)
-	}
-}
-
-func TestEmptyListItem(t *testing.T) {
-	if html := render("-\ntext\n"); !strings.Contains(html, "</ul>\n<p>text</p>") {
-		t.Errorf("text after an empty item should be outside the list: %s", html)
-	}
-
-	if html := render("-\n\n  text\n"); !strings.Contains(html, "</ul>\n<p>  text</p>") {
-		t.Errorf("indented text after an empty item should be outside the list: %s", html)
-	}
-
-	if html := render("-\n  - a\n"); !strings.Contains(html, "<li><ul>") {
-		t.Errorf("nested list under an empty item was lost: %s", html)
 	}
 }

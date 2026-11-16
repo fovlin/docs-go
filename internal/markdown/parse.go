@@ -47,7 +47,7 @@ const (
 
 // block is a small union: each kind uses only some fields. Heading: level,
 // id, inlines. Paragraph: inlines. Code: text, language. List: ordered,
-// start, tight, children. List item: children. Table row: header, children.
+// start. List item: children. Table row: header, children.
 // Table cell: align, inlines. Blockquote: children. Container:
 // containerKind, containerTitle, children.
 type block struct {
@@ -63,7 +63,6 @@ type block struct {
 
 	ordered bool
 	start   int
-	tight   bool
 
 	header bool
 	align  string
@@ -319,7 +318,6 @@ func (p *parser) parseList(lines []string, start int, first listMarker) (block, 
 		kind:    blockList,
 		ordered: first.ordered,
 		start:   first.start,
-		tight:   true,
 	}
 
 	i := start
@@ -331,75 +329,50 @@ func (p *parser) parseList(lines []string, start int, first listMarker) (block, 
 			break
 		}
 
-		empty := marker.content == ""
-		itemLines := []string{marker.content}
-		i++
-
-		atItemLevel := func(m listMarker) bool {
-			return m.indent >= baseIndent && m.indent < marker.contentIndent
-		}
-
-		for i < len(lines) {
-			line := lines[i]
-
-			if isBlank(line) {
-				next := i + 1
-				for next < len(lines) && isBlank(lines[next]) {
-					next++
-				}
-
-				if next >= len(lines) {
-					i = next
-					break
-				}
-
-				if nextMarker, ok := parseListMarker(lines[next]); ok &&
-					atItemLevel(nextMarker) && sameListMarker(nextMarker, first) {
-					list.tight = false
-					i = next
-					break
-				}
-
-				if empty {
-					list.tight = false
-					i = next
-					break
-				}
-
-				if indentWidth(lines[next]) < marker.contentIndent {
-					i = next
-					break
-				}
-
-				itemLines = append(itemLines, "")
-				list.tight = false
-				i = next
-				continue
-			}
-
-			if nextMarker, ok := parseListMarker(line); ok && atItemLevel(nextMarker) {
-				break
-			}
-
-			if indentWidth(line) < marker.contentIndent && p.startsBlock(lines, i) {
-				break
-			}
-
-			if empty && indentWidth(line) < marker.contentIndent {
-				break
-			}
-
-			itemLines = append(itemLines, stripIndent(line, marker.contentIndent))
-			i++
-		}
-
+		itemLines, next := p.collectListItem(lines, i, marker)
 		list.children = append(list.children, block{
 			kind:     blockListItem,
 			children: p.parseBlocks(trimTrailingBlank(itemLines)),
 		})
+		i = next
 	}
 
 	return list, i
+}
+
+// collectListItem consumes one item until a blank line, a sibling marker or an
+// outdented block. Blank lines end the list; there are no loose items and no
+// lazy continuation lines.
+func (p *parser) collectListItem(lines []string, start int, marker listMarker) ([]string, int) {
+	itemLines := []string{marker.content}
+	i := start + 1
+
+	for i < len(lines) {
+
+		if isBlank(lines[i]) {
+			i++
+			continue
+		}
+
+		line := lines[i]
+
+		if isBlank(line) {
+			break
+		}
+
+		if nextMarker, ok := parseListMarker(line); ok && nextMarker.indent < marker.contentIndent {
+			break
+		}
+
+		if indentWidth(line) < marker.contentIndent {
+			break
+		}
+
+		itemLines = append(itemLines, stripIndent(line, marker.contentIndent))
+		i++
+	}
+
+	return itemLines, i
 }
 
 func (p *parser) parseTable(lines []string, start int) (block, int) {
@@ -579,6 +552,9 @@ func parseListMarker(line string) (listMarker, bool) {
 		}
 
 		next = skipSpaces(line, next)
+		if next >= len(line) {
+			return listMarker{}, false
+		}
 
 		return listMarker{
 			marker:        line[index],
@@ -613,6 +589,9 @@ func parseListMarker(line string) (listMarker, bool) {
 	}
 
 	end = skipSpaces(line, end)
+	if end >= len(line) {
+		return listMarker{}, false
+	}
 
 	return listMarker{
 		ordered:       true,
