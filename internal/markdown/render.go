@@ -19,47 +19,6 @@ func (document *Document) Render(resolve ResolveFunc) []byte {
 	return []byte(renderer.builder.String())
 }
 
-// RewriteLinks visits every link and image in the document.
-func (document *Document) RewriteLinks(rewrite func(destination string, image bool) (string, bool)) {
-	if rewrite == nil {
-		return
-	}
-
-	var walkInlines func([]inline)
-	walkInlines = func(items []inline) {
-		for index := range items {
-			switch items[index].kind {
-			case inlineLink:
-				if value, changed := rewrite(items[index].url, false); changed {
-					items[index].url = value
-				}
-				walkInlines(items[index].children)
-			case inlineImage:
-				if value, changed := rewrite(items[index].url, true); changed {
-					items[index].url = value
-				}
-				walkInlines(items[index].children)
-			default:
-				walkInlines(items[index].children)
-			}
-		}
-	}
-
-	var walkBlocks func([]block)
-	walkBlocks = func(items []block) {
-		for index := range items {
-			switch items[index].kind {
-			case blockHeading, blockParagraph, blockTableCell:
-				walkInlines(items[index].inlines)
-			default:
-				walkBlocks(items[index].children)
-			}
-		}
-	}
-
-	walkBlocks(document.blocks)
-}
-
 type renderer struct {
 	builder strings.Builder
 	resolve ResolveFunc

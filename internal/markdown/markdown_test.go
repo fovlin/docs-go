@@ -167,28 +167,6 @@ func TestLineBreakSplitsParagraph(t *testing.T) {
 	}
 }
 
-func TestRewriteLinks(t *testing.T) {
-	document := Parse([]byte("[next](./next.md) ![pic](./pic.png)\n"))
-
-	document.RewriteLinks(func(destination string, image bool) (string, bool) {
-		if image {
-			return "/images/pic.png", true
-		}
-
-		return "/guide/next", true
-	})
-
-	html := string(document.Render(nil))
-
-	if !strings.Contains(html, `href="/guide/next"`) {
-		t.Errorf("link rewrite failed: %s", html)
-	}
-
-	if !strings.Contains(html, `src="/images/pic.png"`) {
-		t.Errorf("image rewrite failed: %s", html)
-	}
-}
-
 func TestPlainTextAndFirstParagraph(t *testing.T) {
 	document := Parse([]byte("# Title\n\nFirst **paragraph** with `code`.\n\n## Section\n"))
 
