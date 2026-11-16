@@ -120,8 +120,8 @@ Result:
 ```
 
 Blank lines do not end a list; they stay inside the list context. There are no
-loose items and no lazy continuation lines. Nested lists must be indented to
-the item's content indent:
+loose/tight items and no lazy continuation lines. Nested lists are recognized
+at two spaces from the marker, or deeper:
 
 ```text
 - Parent
@@ -161,9 +161,9 @@ alignment:
 
 `:---` aligns left, `:---:` centers and `---:` aligns right. The header and
 delimiter rows must have the same number of cells. Delimiter cells need at
-least three dashes. Use `\|` for a literal pipe inside a cell; code spans may
-contain pipes too. Body rows may have fewer cells (padded with empty cells) or
-more cells (the extras are ignored).
+least three dashes. Use `\|` for a literal pipe inside a cell. Code spans do not protect pipes.
+Body rows may have fewer cells (padded with empty cells) or more cells (the
+extras are ignored).
 
 Result:
 

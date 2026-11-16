@@ -356,15 +356,11 @@ func (p *parser) collectListItem(lines []string, start int, marker listMarker) (
 			continue
 		}
 
-		if nextMarker, ok := parseListMarker(line); ok && nextMarker.indent < marker.contentIndent {
+		if indentWidth(line) < marker.indent+2 {
 			break
 		}
 
-		if indentWidth(line) < marker.contentIndent {
-			break
-		}
-
-		itemLines = append(itemLines, stripIndent(line, marker.contentIndent))
+		itemLines = append(itemLines, stripIndent(line, marker.indent+2))
 		i++
 	}
 
@@ -520,12 +516,11 @@ func collectPlainText(blocks []block) string {
 }
 
 type listMarker struct {
-	ordered       bool
-	marker        byte
-	start         int
-	indent        int
-	contentIndent int
-	content       string
+	ordered bool
+	marker  byte
+	start   int
+	indent  int
+	content string
 }
 
 func sameListMarker(a, b listMarker) bool {
@@ -547,16 +542,17 @@ func parseListMarker(line string) (listMarker, bool) {
 			return listMarker{}, false
 		}
 
+		var content string
+
 		next = skipSpaces(line, next)
-		if next >= len(line) {
-			return listMarker{}, false
+		if next < len(line) {
+			content = line[next:]
 		}
 
 		return listMarker{
-			marker:        line[index],
-			indent:        indent,
-			contentIndent: next,
-			content:       line[next:],
+			marker:  line[index],
+			indent:  indent,
+			content: content,
 		}, true
 	}
 
@@ -590,12 +586,11 @@ func parseListMarker(line string) (listMarker, bool) {
 	}
 
 	return listMarker{
-		ordered:       true,
-		marker:        marker,
-		start:         start,
-		indent:        indent,
-		contentIndent: end,
-		content:       line[end:],
+		ordered: true,
+		marker:  marker,
+		start:   start,
+		indent:  indent,
+		content: line[end:],
 	}, true
 }
 
@@ -892,49 +887,20 @@ func isTableStart(lines []string, index int) bool {
 func splitTableRow(line string) []string {
 	line = strings.TrimSpace(line)
 
-	line = strings.TrimPrefix(line, "|")
-
-	if strings.HasSuffix(line, "|") && !strings.HasSuffix(line, "\\|") {
-		line = line[:len(line)-1]
-	}
+	line = strings.Trim(line, "|")
 
 	cells := make([]string, 0, 4)
 	var builder strings.Builder
-	inCode := 0
-
 	for index := 0; index < len(line); index++ {
 		value := line[index]
 
 		if value == '\\' && index+1 < len(line) {
-			if line[index+1] == '|' {
-				builder.WriteByte('|')
-			} else {
-				builder.WriteByte('\\')
-				builder.WriteByte(line[index+1])
-			}
 			index++
+			builder.WriteByte(line[index])
 			continue
 		}
 
-		if value == '`' {
-			run := 1
-			for index+run < len(line) && line[index+run] == '`' {
-				run++
-			}
-
-			switch inCode {
-			case 0:
-				inCode = run
-			case run:
-				inCode = 0
-			}
-
-			builder.WriteString(line[index : index+run])
-			index += run - 1
-			continue
-		}
-
-		if value == '|' && inCode == 0 {
+		if value == '|' {
 			cells = append(cells, strings.TrimSpace(builder.String()))
 			builder.Reset()
 			continue

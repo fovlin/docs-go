@@ -863,7 +863,7 @@ svg {
 }
 
 .custom-block.details {
-	padding: 0;
+	padding: 0px 0px 2px 0px;
 	border-left-color: var(--border);
 	background: var(--surface);
 }

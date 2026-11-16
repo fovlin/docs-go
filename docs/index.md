@@ -2,7 +2,7 @@
 
 A small documentation site generated from the markdown files in `docs/`.
 
-:::warning
+:::details
 Edit the files under `docs/` and run `docs-go dev` while you write. The page
 you are reading was generated from `docs/index.md`.
 :::
