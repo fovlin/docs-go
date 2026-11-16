@@ -542,12 +542,7 @@ func parseListMarker(line string) (listMarker, bool) {
 			return listMarker{}, false
 		}
 
-		var content string
-
-		next = skipSpaces(line, next)
-		if next < len(line) {
-			content = line[next:]
-		}
+		content := line[next+1:]
 
 		return listMarker{
 			marker:  line[index],
