@@ -111,6 +111,7 @@ func (p *parser) parseBlocks(lines []string) []block {
 			continue
 		}
 
+		// ``` code block
 		if char, length, info, ok := fenceStart(line); ok {
 			code, language, next := parseFence(lines, i, char, length, info)
 			blocks = append(blocks, block{
@@ -122,6 +123,7 @@ func (p *parser) parseBlocks(lines []string) []block {
 			continue
 		}
 
+		// tab code block
 		if indentWidth(line) >= 4 {
 			code, next := parseIndentedCode(lines, i)
 			blocks = append(blocks, block{kind: blockCode, text: code})
@@ -154,12 +156,14 @@ func (p *parser) parseBlocks(lines []string) []block {
 			continue
 		}
 
+		// is --- / *** ?
 		if thematicBreak(line) {
 			blocks = append(blocks, block{kind: blockThematicBreak})
 			i++
 			continue
 		}
 
+		// >... ?
 		if blockquoteStart(line) {
 			inner, next := p.collectBlockquote(lines, i)
 			blocks = append(blocks, block{
@@ -199,10 +203,6 @@ func (p *parser) parseBlocks(lines []string) []block {
 		start := i
 		i++
 
-		for i < len(lines) && !isBlank(lines[i]) && !p.interruptsParagraph(lines, i) {
-			i++
-		}
-
 		blocks = append(blocks, block{
 			kind:    blockParagraph,
 			inlines: parseInline(strings.Join(lines[start:i], "\n")),
@@ -210,21 +210,6 @@ func (p *parser) parseBlocks(lines []string) []block {
 	}
 
 	return blocks
-}
-
-// startsBlock includes table starts, which need the next line to detect.
-func (p *parser) startsBlock(lines []string, index int) bool {
-	return startsBlockLine(lines[index]) || isTableStart(lines, index)
-}
-
-// interruptsParagraph is startsBlock with the CommonMark exception that an
-// ordered list not starting at 1 does not split a paragraph.
-func (p *parser) interruptsParagraph(lines []string, index int) bool {
-	if marker, ok := parseListMarker(lines[index]); ok && marker.ordered && marker.start != 1 {
-		return false
-	}
-
-	return p.startsBlock(lines, index)
 }
 
 func parseFence(lines []string, start int, char byte, length int, info string) (string, string, int) {
@@ -295,14 +280,6 @@ func (p *parser) collectBlockquote(lines []string, start int) ([]string, int) {
 
 		if blockquoteStart(line) {
 			inner = append(inner, stripBlockquote(line))
-			i++
-			continue
-		}
-
-		// Lazy continuation: a plain line directly after a quoted line still
-		// belongs to the quote. A new block marker ends it.
-		if !p.interruptsParagraph(lines, i) {
-			inner = append(inner, line)
 			i++
 			continue
 		}
@@ -380,7 +357,7 @@ func (p *parser) parseTable(lines []string, start int) (block, int) {
 
 	i := start + 2
 	for i < len(lines) {
-		if !strings.Contains(lines[i], "|") || startsBlockLine(lines[i]) {
+		if !strings.Contains(lines[i], "|") {
 			break
 		}
 
@@ -776,7 +753,8 @@ func collectContainer(lines []string, start int) ([]string, int) {
 			continue
 		}
 
-		if isContainerClose(line) {
+		// is container close?
+		if indentWidth(line) <= 3 && strings.TrimSpace(line) == ":::" {
 			depth--
 			if depth == 0 {
 				return trimTrailingBlank(inner), i + 1
@@ -796,38 +774,6 @@ func collectContainer(lines []string, start int) ([]string, int) {
 	}
 
 	return trimTrailingBlank(inner), i
-}
-
-func isContainerClose(line string) bool {
-	return indentWidth(line) <= 3 && strings.TrimSpace(line) == ":::"
-}
-
-func startsBlockLine(line string) bool {
-	if isBlank(line) || thematicBreak(line) {
-		return true
-	}
-
-	if _, _, ok := headingStart(line); ok {
-		return true
-	}
-
-	if _, _, _, ok := fenceStart(line); ok {
-		return true
-	}
-
-	if blockquoteStart(line) {
-		return true
-	}
-
-	if _, ok := parseListMarker(line); ok {
-		return true
-	}
-
-	if _, _, ok := containerStart(line); ok {
-		return true
-	}
-
-	return false
 }
 
 func tableDelimiter(line string) ([]string, bool) {

@@ -2,7 +2,9 @@
 
 A small documentation site generated from the markdown files in `docs/`.
 
--     a
+a|b|c|d
+---|---|---|---
+a|c|v|s
 
 :::details
 Edit the files under `docs/` and run `docs-go dev` while you write. The page
