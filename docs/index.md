@@ -2,10 +2,6 @@
 
 A small documentation site generated from the markdown files in `docs/`.
 
-a|b|c|d
----|---|---|---
-a|c|v|s
-
 :::details
 Edit the files under `docs/` and run `docs-go dev` while you write. The page
 you are reading was generated from `docs/index.md`.
@@ -15,7 +11,7 @@ you are reading was generated from `docs/index.md`.
 
 ~~~bash
 docs-go build    # write the site to dist/
-docs-go dev      # build, watch for changes and preview on :8080
+docs-go dev      # render on demand and preview on :7280
 ~~~
 
 Homepage: [sufox.net](https://sufox.net)

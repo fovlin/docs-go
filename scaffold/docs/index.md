@@ -11,7 +11,7 @@ you are reading was generated from `docs/index.md`.
 
 ~~~bash
 docs-go build      # write the site to dist/
-docs-go dev      # build, watch for changes and preview on :8080
+docs-go dev      # render on demand and preview on :7280
 ~~~
 
 ## Where things live

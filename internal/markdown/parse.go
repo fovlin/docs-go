@@ -101,115 +101,104 @@ func Parse(source []byte) *Document {
 }
 
 func (p *parser) parseBlocks(lines []string) []block {
-	blocks := make([]block, 0, len(lines))
+	var blocks = make([]block, 0, len(lines))
 
 	for i := 0; i < len(lines); {
-		line := lines[i]
-
-		if isBlank(line) {
-			i++
-			continue
+		next, ended := skipBlank(lines, i);
+		if ended {
+			break
 		}
+		i = next
 
-		// ``` code block
-		if char, length, info, ok := fenceStart(line); ok {
-			code, language, next := parseFence(lines, i, char, length, info)
-			blocks = append(blocks, block{
-				kind:     blockCode,
-				text:     code,
-				language: language,
-			})
-			i = next
-			continue
-		}
+		b, next := p.parseBlock(lines, i)
+		i = next
 
-		// tab code block
-		if indentWidth(line) >= 4 {
-			code, next := parseIndentedCode(lines, i)
-			blocks = append(blocks, block{kind: blockCode, text: code})
-			i = next
-			continue
-		}
-
-		if level, text, ok := headingStart(line); ok {
-			inlines := parseInline(text)
-			id := p.uniqueHeadingID(plainInlines(inlines))
-			headingText := plainInlines(inlines)
-
-			p.headings = append(p.headings, Heading{
-				Level: level,
-				Text:  headingText,
-				ID:    id,
-			})
-
-			if level == 1 && p.firstH1 == "" {
-				p.firstH1 = headingText
-			}
-
-			blocks = append(blocks, block{
-				kind:    blockHeading,
-				level:   level,
-				id:      id,
-				inlines: inlines,
-			})
-			i++
-			continue
-		}
-
-		// is --- / *** ?
-		if thematicBreak(line) {
-			blocks = append(blocks, block{kind: blockThematicBreak})
-			i++
-			continue
-		}
-
-		// >... ?
-		if blockquoteStart(line) {
-			inner, next := p.collectBlockquote(lines, i)
-			blocks = append(blocks, block{
-				kind:     blockBlockquote,
-				children: p.parseBlocks(inner),
-			})
-			i = next
-			continue
-		}
-
-		if marker, ok := parseListMarker(line); ok {
-			list, next := p.parseList(lines, i, marker)
-			blocks = append(blocks, list)
-			i = next
-			continue
-		}
-
-		if kind, title, ok := containerStart(line); ok {
-			inner, next := collectContainer(lines, i)
-			blocks = append(blocks, block{
-				kind:           blockContainer,
-				containerKind:  kind,
-				containerTitle: title,
-				children:       p.parseBlocks(inner),
-			})
-			i = next
-			continue
-		}
-
-		if isTableStart(lines, i) {
-			table, next := p.parseTable(lines, i)
-			blocks = append(blocks, table)
-			i = next
-			continue
-		}
-
-		start := i
-		i++
-
-		blocks = append(blocks, block{
-			kind:    blockParagraph,
-			inlines: parseInline(strings.Join(lines[start:i], "\n")),
-		})
+		blocks = append(blocks, b)
 	}
 
 	return blocks
+}
+
+func (p *parser) parseBlock(lines []string, i int) (block, int) {
+	line := lines[i]
+
+	// ``` code block
+	if char, length, info, ok := fenceStart(line); ok {
+		code, language, next := parseFence(lines, i, char, length, info)
+		return block{
+			kind:     blockCode,
+			text:     code,
+			language: language,
+		}, next
+	}
+
+	// tab code block
+	if indentWidth(line) >= 4 {
+		code, next := parseIndentedCode(lines, i)
+		return block{kind: blockCode, text: code}, next
+	}
+
+	if level, text, ok := headingStart(line); ok {
+		inlines := parseInline(text)
+		id := p.uniqueHeadingID(plainInlines(inlines))
+		headingText := plainInlines(inlines)
+
+		p.headings = append(p.headings, Heading{
+			Level: level,
+			Text:  headingText,
+			ID:    id,
+		})
+
+		if level == 1 && p.firstH1 == "" {
+			p.firstH1 = headingText
+		}
+
+		return block{
+			kind:    blockHeading,
+			level:   level,
+			id:      id,
+			inlines: inlines,
+		}, i + 1
+	}
+
+	// is --- / *** ?
+	if thematicBreak(line) {
+		return block{kind: blockThematicBreak}, i + 1
+	}
+
+	// >... ?
+	if blockquoteStart(line) {
+		inner, next := p.collectBlockquote(lines, i)
+		return block{
+			kind:     blockBlockquote,
+			children: p.parseBlocks(inner),
+		}, next
+	}
+
+	if marker, ok := parseListMarker(line); ok {
+		list, next := p.parseList(lines, i, marker)
+		return list, next
+	}
+
+	if kind, title, ok := containerStart(line); ok {
+		inner, next := collectContainer(lines, i)
+		return block{
+			kind:           blockContainer,
+			containerKind:  kind,
+			containerTitle: title,
+			children:       p.parseBlocks(inner),
+		}, next
+	}
+
+	if isTableStart(lines, i) {
+		table, next := p.parseTable(lines, i)
+		return table, next
+	}
+
+	return block{
+		kind:    blockParagraph,
+		inlines: parseInline(lines[i]),
+	}, i + 1
 }
 
 func parseFence(lines []string, start int, char byte, length int, info string) (string, string, int) {
@@ -245,11 +234,12 @@ func parseIndentedCode(lines []string, start int) (string, int) {
 	i := start
 
 	for i < len(lines) {
-		if isBlank(lines[i]) {
-			content = append(content, "")
-			i++
-			continue
+		next, ended := skipBlank(lines, i);
+		if ended {
+			break
 		}
+
+		i = next
 
 		if indentWidth(lines[i]) < 4 {
 			break
@@ -274,7 +264,7 @@ func (p *parser) collectBlockquote(lines []string, start int) ([]string, int) {
 	for i < len(lines) {
 		line := lines[i]
 
-		if isBlank(line) {
+		if strings.TrimSpace(line) == "" {
 			break
 		}
 
@@ -325,13 +315,13 @@ func (p *parser) collectListItem(lines []string, start int, marker listMarker) (
 	i := start + 1
 
 	for i < len(lines) {
-		line := lines[i]
-
-		if isBlank(line) {
-			itemLines = append(itemLines, "")
-			i++
-			continue
+		next, ended := skipBlank(lines, i);
+		if ended {
+			break
 		}
+		i = next
+
+		line := lines[i]
 
 		if indentWidth(line) < marker.indent+2 {
 			break
@@ -357,7 +347,8 @@ func (p *parser) parseTable(lines []string, start int) (block, int) {
 
 	i := start + 2
 	for i < len(lines) {
-		if !strings.Contains(lines[i], "|") {
+
+		if strings.TrimSpace(lines[i]) == "" || !isTableRaw(lines[i]) {
 			break
 		}
 
@@ -777,7 +768,7 @@ func collectContainer(lines []string, start int) ([]string, int) {
 }
 
 func tableDelimiter(line string) ([]string, bool) {
-	if !strings.Contains(line, "|") {
+	if !isTableRaw(line) {
 		return nil, false
 	}
 
@@ -816,13 +807,17 @@ func tableDelimiter(line string) ([]string, bool) {
 }
 
 func isTableStart(lines []string, index int) bool {
-	if index+1 >= len(lines) || !strings.Contains(lines[index], "|") {
+	if index+1 >= len(lines) || !isTableRaw(lines[index]) {
 		return false
 	}
 
 	aligns, ok := tableDelimiter(lines[index+1])
 
 	return ok && len(aligns) == len(splitTableRow(lines[index]))
+}
+
+func isTableRaw(line string) bool {
+	return strings.ContainsRune(line, '|') && !strings.ContainsAny(strings.TrimSpace(line[:1]), "-+*#")
 }
 
 func splitTableRow(line string) []string {
@@ -855,8 +850,16 @@ func splitTableRow(line string) []string {
 	return cells
 }
 
-func isBlank(line string) bool {
-	return strings.TrimSpace(line) == ""
+func skipBlank(lines []string, i int) (int, bool) {
+	for i < len(lines) {
+		if strings.TrimSpace(lines[i]) == "" {
+			i++
+			continue
+		}
+		break
+	}
+
+	return i, i >= len(lines)
 }
 
 // blockIndent returns the leading-space width of a block marker, capped at 4.
@@ -918,7 +921,7 @@ func skipSpaces(line string, index int) int {
 }
 
 func trimTrailingBlank(lines []string) []string {
-	for len(lines) > 0 && isBlank(lines[len(lines)-1]) {
+	for len(lines) > 0 && strings.TrimSpace(lines[len(lines)-1]) == "" {
 		lines = lines[:len(lines)-1]
 	}
 

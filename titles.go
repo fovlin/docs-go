@@ -86,14 +86,3 @@ func (app *App) titleFor(page *Page) string {
 	app.Titles.store(page.AbsPath, title, mod, size)
 	return title
 }
-
-func (app *App) titleForHref(href string) string {
-	target := href
-	if app.Base != "/" {
-		target = strings.TrimPrefix(href, strings.TrimSuffix(app.Base, "/"))
-	}
-	if page := app.findPageByURL(target); page != nil {
-		return app.titleFor(page)
-	}
-	return href
-}

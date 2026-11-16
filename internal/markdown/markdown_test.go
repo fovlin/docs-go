@@ -159,11 +159,11 @@ func TestEntity(t *testing.T) {
 	}
 }
 
-func TestHardBreak(t *testing.T) {
+func TestLineBreakSplitsParagraph(t *testing.T) {
 	html := render("one  \ntwo\n")
 
-	if !strings.Contains(html, "one<br>\ntwo") {
-		t.Errorf("hard break failed: %s", html)
+	if !strings.Contains(html, "<p>one  </p>\n<p>two</p>") {
+		t.Errorf("line break should split the paragraph: %s", html)
 	}
 }
 
@@ -299,8 +299,8 @@ func TestIndentedCode(t *testing.T) {
 		t.Errorf("tab-indented code block missing: %s", tabbed)
 	}
 
-	if paragraph := render("text\n    still text\n"); strings.Contains(paragraph, "<code>") {
-		t.Errorf("indented line broke a paragraph: %s", paragraph)
+	if paragraph := render("text\n    still text\n"); !strings.Contains(paragraph, "<code>still text") {
+		t.Errorf("indented line should become a code block: %s", paragraph)
 	}
 }
 
@@ -327,8 +327,8 @@ func TestListMarkers(t *testing.T) {
 		t.Errorf("different ordered markers should start a new list: %s", html)
 	}
 
-	if html := render("text\n2. item\n"); strings.Contains(html, "<ol") {
-		t.Errorf("ordered list above 1 split a paragraph: %s", html)
+	if html := render("text\n2. item\n"); !strings.Contains(html, `<ol start="2">`) {
+		t.Errorf("ordered list did not start after the paragraph: %s", html)
 	}
 }
 

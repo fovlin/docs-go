@@ -49,8 +49,8 @@ my-docs/
   docs/
     index.md           /
     guide/
-      index.md         /guide/
       getting-started.md
+      configuration.md
   public/              copied to the root of the generated site
   dist/                generated; do not edit
 ```

@@ -9,7 +9,7 @@ Every `.md` file under `docs/` becomes a page:
 | Source | URL |
 | --- | --- |
 | `docs/index.md` | `/` |
-| `docs/guide/index.md` | `/guide/` |
+| `docs/guide/index.md` | `/guide/` (optional directory index) |
 | `docs/guide/getting-started.md` | `/guide/getting-started` |
 
 With `clean_urls` enabled the generated file is still
@@ -22,17 +22,21 @@ With `clean_urls` enabled the generated file is still
 docs-go build
 ~~~
 
-The output goes to `dist/` by default. The directory is replaced atomically, so
-a failed build never leaves half a site behind.
+The output goes to `dist/` by default. The directory is cleared and written
+directly; it is not an atomic swap, so a failed render can leave a partial site.
 
-## Preview with live reload
+## Preview
 
 ~~~bash
-docs-go serve -p 8080
+docs-go dev
 ~~~
 
-`serve` watches the source directory, the config and the sidebar file. When
-something changes it rebuilds and the browser reloads automatically.
+The dev server listens on <http://localhost:7280> by default. Pages are read
+from source on each request. Changes to `docs.json` and `sidebar.json` are
+picked up on the next request, but the browser is not reloaded automatically;
+refresh manually.
+
+`serve` is accepted as an alias for `dev`, but use `dev` in new scripts.
 
 ## Add a page
 
