@@ -68,10 +68,7 @@ Every field is optional; missing fields use defaults.
 
 `active_match` can override the URL prefix used for the active state.
 
-`social_links` accepts `github`, `gitlab`, `x`, `twitter`, `discord`,
-`youtube`, `linkedin`, `rss`, `mail`, `email` and `link`. Unknown icons fall
-back to the generic link icon. Social links are hidden at `1240px` and below;
-they move into the **On this page** menu together with the outline.
+`social_links` accepts `github`, `gitlab`, `x`, `twitter`, `discord`, `youtube`, `linkedin`, `rss`, `mail`, `email` and `link`. Unknown icons fall back to the generic link icon. Social links are hidden at `1240px` and below; they move into the **On this page** menu together with the outline.
 
 ## Page chrome
 
@@ -134,10 +131,8 @@ or an object keyed by URL prefix:
 }
 ~~~
 
-The longest matching prefix wins. Sidebars may link to pages in other sidebars;
-the destination page uses its own matching sidebar and its own prev/next context.
+The longest matching prefix wins. Sidebars may link to pages in other sidebars; the destination page uses its own matching sidebar and its own prev/next context.
 
 ## No footer
 
-There is no footer configuration. A `footer` object in an older `docs.json` is
-ignored.
+There is no footer configuration. A `footer` object in an older `docs.json` is ignored.

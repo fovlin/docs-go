@@ -3,8 +3,7 @@
 A small documentation site generated from the markdown files in `docs/`.
 
 ::: tip
-Edit the files under `docs/` and run `docs-go dev` while you write. The page
-you are reading was generated from `docs/index.md`.
+Edit the files under `docs/` and run `docs-go dev` while you write. The page you are reading was generated from `docs/index.md`.
 :::
 
 ## Quick start
