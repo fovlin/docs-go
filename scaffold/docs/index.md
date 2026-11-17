@@ -18,8 +18,8 @@ docs-go dev      # render on demand and preview on :7280
 | Path | Purpose |
 | --- | --- |
 | `docs/` | Markdown source. Folders become URL segments. |
-| `docs.json` | Site settings: title, navigation, theme. |
-| `sidebar.json` | Sidebar entries, kept out of the main config. |
+| `config/docs.json` | Site settings: title, navigation, theme. |
+| `config/sidebar.json` | Sidebar entries, kept out of the main config. |
 | `public/` | Static files copied to the root of the output. |
 | `dist/` | Generated site. Never edit it by hand. |
 

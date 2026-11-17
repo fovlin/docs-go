@@ -22,7 +22,7 @@ func loadTestProject(t *testing.T, root string) *App {
 	t.Helper()
 
 	logQuiet = true
-	app, err := LoadApp(root, "docs.json", "", "")
+	app, err := LoadApp(root, "config/docs.json", "", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -33,11 +33,11 @@ func loadTestProject(t *testing.T, root string) *App {
 func writeTestProject(t *testing.T, root string) {
 	t.Helper()
 
-	writeFile(t, filepath.Join(root, "docs.json"), `{
+	writeFile(t, filepath.Join(root, "config/docs.json"), `{
 		"title": "Test docs",
 		"clean_urls": true
 	}`)
-	writeFile(t, filepath.Join(root, "sidebar.json"), `{
+	writeFile(t, filepath.Join(root, "config/sidebar.json"), `{
 		"/guide/": [{
 			"text": "Guide",
 			"items": [
@@ -261,7 +261,7 @@ func TestShellClassDoesNotReserveEmptySidebar(t *testing.T) {
 func TestSidebarCanLinkToAnotherSidebar(t *testing.T) {
 	root := t.TempDir()
 	writeTestProject(t, root)
-	writeFile(t, filepath.Join(root, "sidebar.json"), `{
+	writeFile(t, filepath.Join(root, "config/sidebar.json"), `{
 		"/guide/": [{
 			"text": "Guide",
 			"items": [
@@ -324,12 +324,12 @@ func TestBuildRejectsReserved404Output(t *testing.T) {
 func TestSidebarRejectsNormalizedDuplicatePrefixes(t *testing.T) {
 	root := t.TempDir()
 	writeTestProject(t, root)
-	writeFile(t, filepath.Join(root, "sidebar.json"), `{
+	writeFile(t, filepath.Join(root, "config/sidebar.json"), `{
 		"/guide/": [{ "text": "A", "link": "/guide/start" }],
 		"/guide":  [{ "text": "B", "link": "/guide/next" }]
 	}`)
 
-	_, err := LoadApp(root, "docs.json", "", "")
+	_, err := LoadApp(root, "config/docs.json", "", "")
 	if err == nil || !strings.Contains(err.Error(), "defined more than once") {
 		t.Fatalf("expected duplicate sidebar error, got %v", err)
 	}

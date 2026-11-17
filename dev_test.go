@@ -21,7 +21,7 @@ func TestDevReadsPageFromDiskEachTime(t *testing.T) {
 	root := t.TempDir()
 	writeTestProject(t, root)
 	app := loadTestProject(t, root)
-	dev := newDev(app, "docs.json", "", "")
+	dev := newDev(app, "config/docs.json", "", "")
 
 	first := devGet(t, dev, "/guide/start")
 	if first.Code != http.StatusOK {
@@ -50,13 +50,13 @@ func TestDevSnapshotSwap(t *testing.T) {
 	root := t.TempDir()
 	writeTestProject(t, root)
 	app := loadTestProject(t, root)
-	dev := newDev(app, "docs.json", "", "")
+	dev := newDev(app, "config/docs.json", "", "")
 
 	if dev.snapshot() != app {
 		t.Fatal("snapshot changed without a config edit")
 	}
 
-	writeFile(t, filepath.Join(root, "docs.json"), `{
+	writeFile(t, filepath.Join(root, "config/docs.json"), `{
 		"title": "Changed docs",
 		"clean_urls": true
 	}`)
@@ -79,9 +79,9 @@ func TestDevFailedReloadKeepsPreviousSnapshot(t *testing.T) {
 	root := t.TempDir()
 	writeTestProject(t, root)
 	app := loadTestProject(t, root)
-	dev := newDev(app, "docs.json", "", "")
+	dev := newDev(app, "config/docs.json", "", "")
 
-	writeFile(t, filepath.Join(root, "docs.json"), `{"title": "Broken docs"`)
+	writeFile(t, filepath.Join(root, "config/docs.json"), `{"title": "Broken docs"`)
 
 	if kept := dev.snapshot(); kept != app {
 		t.Fatal("failed reload replaced the previous snapshot")
@@ -92,7 +92,7 @@ func TestDevFailedReloadKeepsPreviousSnapshot(t *testing.T) {
 		t.Fatal("request did not use the previous snapshot after a failed reload")
 	}
 
-	writeFile(t, filepath.Join(root, "docs.json"), `{
+	writeFile(t, filepath.Join(root, "config/docs.json"), `{
 		"title": "Fixed docs",
 		"clean_urls": true
 	}`)
@@ -109,7 +109,7 @@ func TestDevFailedReloadKeepsPreviousSnapshot(t *testing.T) {
 func TestDevCacheResetSeesNewSource(t *testing.T) {
 	root := t.TempDir()
 	writeTestProject(t, root)
-	app, err := LoadApp(root, "docs.json", "", "")
+	app, err := LoadApp(root, "config/docs.json", "", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -129,10 +129,10 @@ func TestDevCacheResetSeesNewSource(t *testing.T) {
 func TestSidebarTitleFollowsEditedSource(t *testing.T) {
 	root := t.TempDir()
 	writeTestProject(t, root)
-	writeFile(t, filepath.Join(root, "sidebar.json"), `{
+	writeFile(t, filepath.Join(root, "config/sidebar.json"), `{
 		"/guide/": [{ "items": [{ "link": "/guide/start" }] }]
 	}`)
-	app, err := LoadApp(root, "docs.json", "", "")
+	app, err := LoadApp(root, "config/docs.json", "", "")
 	if err != nil {
 		t.Fatal(err)
 	}

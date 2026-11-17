@@ -2,12 +2,12 @@
 
 A docs-go site uses two JSON files:
 
-- `docs.json` for site settings, navigation and output paths
-- `sidebar.json` for one or more sidebar trees
+- `config/docs.json` for site settings, navigation and output paths
+- `config/sidebar.json` for one or more sidebar trees
 
 Every field is optional; missing fields use defaults.
 
-## docs.json
+## config/docs.json
 
 ~~~json
 {
@@ -18,7 +18,7 @@ Every field is optional; missing fields use defaults.
   "src_dir": "docs",
   "out_dir": "dist",
   "public_dir": "public",
-  "sidebar_file": "sidebar.json",
+  "sidebar_file": "config/sidebar.json",
   "clean_urls": true,
   "logo": "/logo.svg",
   "nav": [
@@ -44,7 +44,7 @@ Every field is optional; missing fields use defaults.
 | `src_dir` | `docs` | Markdown and asset source directory. |
 | `out_dir` | `dist` | Build output directory. |
 | `public_dir` | `public` | Files copied to the output root. |
-| `sidebar_file` | `sidebar.json` | Sidebar file, relative to the project. |
+| `sidebar_file` | `config/sidebar.json` | Sidebar file, relative to the project. |
 | `clean_urls` | `true` | Omit `.html` from generated links. |
 | `site_url` | empty | Absolute URL used for canonical links and the sitemap. |
 | `sitemap` | `false` | Write `sitemap.xml`; requires `site_url`. |
@@ -100,9 +100,9 @@ Override interface labels with `ui`:
 }
 ~~~
 
-## sidebar.json
+## config/sidebar.json
 
-The sidebar is separate from `docs.json`. It accepts one array for every page:
+The sidebar is separate from `config/docs.json`. It accepts one array for every page:
 
 ~~~json
 [
@@ -135,4 +135,4 @@ The longest matching prefix wins. Sidebars may link to pages in other sidebars; 
 
 ## No footer
 
-There is no footer configuration. A `footer` object in an older `docs.json` is ignored.
+There is no footer configuration. A `footer` object in an older `config/docs.json` is ignored.

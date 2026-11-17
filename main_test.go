@@ -22,7 +22,7 @@ func TestResolveCommand(t *testing.T) {
 }
 
 func TestValidateFlagValues(t *testing.T) {
-	if err := validateFlagValues([]string{"build", "-c", "docs.json"}); err != nil {
+	if err := validateFlagValues([]string{"build", "-c", "config/docs.json"}); err != nil {
 		t.Fatal(err)
 	}
 	if err := validateFlagValues([]string{"build", "-c"}); err == nil {
@@ -39,8 +39,8 @@ func TestInitCustomConfig(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(root, "site.json")); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := os.Stat(filepath.Join(root, "docs.json")); !os.IsNotExist(err) {
-		t.Fatalf("unexpected docs.json: %v", err)
+	if _, err := os.Stat(filepath.Join(root, "config/docs.json")); !os.IsNotExist(err) {
+		t.Fatalf("unexpected config/docs.json: %v", err)
 	}
 	app, err := LoadApp(root, "site.json", "", "")
 	if err != nil {

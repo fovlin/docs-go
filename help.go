@@ -13,7 +13,7 @@ commands:
   init       write a new site skeleton
 
 options:
-  -c, --config <file>   config file (default: docs.json)
+  -c, --config <file>   config file (default: config/docs.json)
   -s, --src <dir>       override src_dir
   -o, --out <dir>       override out_dir
   -a, --addr <ip>       dev listen address (default: localhost)
@@ -25,5 +25,5 @@ examples:
   docs-go init my-docs
   cd my-docs && docs-go build
   docs-go dev -p 9000
-  docs-go build -c docs.json .
+  docs-go build -c config/docs.json .
 `

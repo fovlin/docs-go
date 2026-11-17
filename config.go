@@ -11,8 +11,8 @@ import (
 )
 
 const (
-	defaultConfigFile  = "docs.json"
-	defaultSidebarFile = "sidebar.json"
+	defaultConfigFile  = "config/docs.json"
+	defaultSidebarFile = "config/sidebar.json"
 	defaultSrcDir      = "docs"
 	defaultOutDir      = "dist"
 	defaultPublicDir   = "public"

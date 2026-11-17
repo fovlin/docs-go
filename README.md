@@ -7,7 +7,7 @@
 - **One binary.** No Node.js, no bundler, no plugin graph. The only external
   Go module is the small `github.com/fovlin/opt` flag parser; logging is a
   vendored `record` package.
-- **Two config files.** `docs.json` for the site and `sidebar.json` for
+- **Two config files.** `config/docs.json` for the site and `config/sidebar.json` for
   navigation, kept separate on purpose.
 - **A real static site.** Every page is an HTML file. JavaScript only adds
   theme switching, copy buttons, the mobile drawer, the page menu and the
@@ -29,8 +29,8 @@ cd my-docs
 ```
 
 Open <http://localhost:7280/>. Refresh the browser after editing a file under
-`docs/`; the page is read from disk on every request. Changes to `docs.json`
-and `sidebar.json` are picked up on the next request.
+`docs/`; the page is read from disk on every request. Changes to `config/docs.json`
+and `config/sidebar.json` are picked up on the next request.
 
 To build once:
 
@@ -44,8 +44,9 @@ The output goes to `dist/`; docs-go clears it and writes the site directly.
 
 ```
 my-docs/
-  docs.json            site settings
-  sidebar.json         navigation, kept out of the main config
+  config/
+    docs.json                site settings
+    sidebar.json             navigation, kept out of the main config
   docs/
     index.md           /
     guide/
@@ -57,11 +58,11 @@ my-docs/
 
 ## Configuration
 
-`docs.json` covers the title, description, language, base path, directories,
+`config/docs.json` covers the title, description, language, base path, directories,
 navigation and theme. Every field is optional; missing fields use
 defaults. Paths are relative to the project directory.
 
-`sidebar.json` is a separate file. It accepts one array for every page:
+`config/sidebar.json` is a separate file. It accepts one array for every page:
 
 ```json
 [
@@ -111,7 +112,7 @@ docs-go <command> [options] [project]
 
 | Option | Description |
 | --- | --- |
-| `-c, --config <file>` | Config file, default `docs.json`. |
+| `-c, --config <file>` | Config file, default `config/docs.json`. |
 | `-s, --src <dir>` | Override `src_dir`. |
 | `-o, --out <dir>` | Override `out_dir`. |
 | `-a, --addr <ip>` | Listen address for `dev` (default `localhost`). |

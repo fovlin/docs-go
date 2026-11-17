@@ -145,6 +145,7 @@ func (app *App) serveDev(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
+
 	if !strings.HasPrefix(sitePath, "/") {
 		sitePath = "/" + sitePath
 	}
@@ -239,17 +240,12 @@ func (app *App) serveSourceAsset(w http.ResponseWriter, r *http.Request, sitePat
 }
 
 func serveAssetFrom(w http.ResponseWriter, r *http.Request, sitePath, directory string, source bool) bool {
-	relative := strings.TrimPrefix(sitePath, "/")
-	if relative == "" {
-		return false
-	}
-
-	data, ok := readAsset(directory, relative, source)
+	data, ok := readAsset(directory, sitePath, source)
 	if !ok {
 		return false
 	}
 
-	serveBytes(w, r, relative, data)
+	serveBytes(w, r, sitePath, data)
 	return true
 }
 
@@ -263,15 +259,20 @@ func readAsset(directory, relative string, source bool) ([]byte, bool) {
 		return nil, false
 	}
 
-	target := filepath.Join(root, filepath.FromSlash(relative))
-	resolved, err := filepath.EvalSymlinks(target)
-	if err != nil || !isInside(root, resolved) {
+	resolved, ok := resolveAssetTarget(root, filepath.Join(root, filepath.FromSlash(relative)))
+	if !ok {
 		return nil, false
 	}
 
 	info, err := os.Stat(resolved)
-	if err != nil || info.IsDir() {
+	if err != nil {
 		return nil, false
+	}
+	if info.IsDir() {
+		resolved, ok = resolveAssetTarget(root, filepath.Join(resolved, "index.html"))
+		if !ok {
+			return nil, false
+		}
 	}
 
 	data, err := os.ReadFile(resolved)
@@ -280,6 +281,14 @@ func readAsset(directory, relative string, source bool) ([]byte, bool) {
 	}
 
 	return data, true
+}
+
+func resolveAssetTarget(root, target string) (string, bool) {
+	resolved, err := filepath.EvalSymlinks(target)
+	if err != nil || !isInside(root, resolved) {
+		return "", false
+	}
+	return resolved, true
 }
 
 func hasHiddenSegment(relative string) bool {

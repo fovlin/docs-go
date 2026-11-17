@@ -28,13 +28,13 @@ The output goes to `dist/` by default. The directory is cleared and written dire
 docs-go dev
 ~~~
 
-The dev server listens on <http://localhost:7280> by default. Pages are read from source on each request. Changes to `docs.json` and `sidebar.json` are picked up on the next request, but the browser is not reloaded automatically; refresh manually.
+The dev server listens on <http://localhost:7280> by default. Pages are read from source on each request. Changes to `config/docs.json` and `config/sidebar.json` are picked up on the next request, but the browser is not reloaded automatically; refresh manually.
 
 `serve` is accepted as an alias for `dev`, but use `dev` in new scripts.
 
 ## Add a page
 
-Create `docs/guide/my-page.md`, then add it to `sidebar.json`:
+Create `docs/guide/my-page.md`, then add it to `config/sidebar.json`:
 
 ~~~json
 {
