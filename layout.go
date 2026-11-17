@@ -28,9 +28,7 @@ func compileLayout(source string) []layoutPart {
 		}
 		end += start + 2
 
-		if start > 0 {
-			parts = append(parts, layoutPart{text: source[:start]})
-		}
+		parts = append(parts, layoutPart{text: source[:start]})
 
 		raw := strings.TrimSpace(source[start+2 : end])
 		parts = append(parts, layoutPart{name: strings.TrimSpace(strings.TrimPrefix(raw, "@"))})

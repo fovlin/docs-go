@@ -16,16 +16,8 @@ import (
 func runBuild(app *App) error {
 	start := time.Now()
 
-	if err := app.validateOutput(); err != nil {
+	if err := app.initOutput(); err != nil {
 		return err
-	}
-
-	if err := os.RemoveAll(app.OutDir); err != nil {
-		return fmt.Errorf("clear output directory: %w", err)
-	}
-
-	if err := os.MkdirAll(app.OutDir, 0o755); err != nil {
-		return fmt.Errorf("create output directory: %w", err)
 	}
 
 	if err := app.copyTree(app.SrcDir, app.OutDir, true); err != nil {
@@ -139,14 +131,14 @@ func (app *App) walkPages(visit func(*Page) error) error {
 	return err
 }
 
-func (app *App) validateOutput() error {
+func (app *App) initOutput() error {
 	output := filepath.Clean(app.OutDir)
 	root := filepath.Clean(app.Root)
 	srcDir := filepath.Clean(app.SrcDir)
 	publicDir := filepath.Clean(app.PublicDir)
 
 	if isWithin(output, root) {
-		return fmt.Errorf("out_dir must not be the project root or contain it")
+		return fmt.Errorf("out_dir must not contain the project root")
 	}
 
 	for _, directory := range []string{srcDir, publicDir} {
@@ -155,13 +147,16 @@ func (app *App) validateOutput() error {
 		}
 	}
 
-	if info, err := os.Lstat(output); err == nil {
-		if info.Mode()&os.ModeSymlink != 0 {
-			return fmt.Errorf("out_dir must not be a symlink: %s", output)
-		}
-		if !info.IsDir() {
-			return fmt.Errorf("out_dir exists and is not a directory: %s", output)
-		}
+	if info, err := os.Lstat(output); err == nil && !info.IsDir() {
+		return fmt.Errorf("out_dir exists and is not a directory: %s", output)
+	}
+
+	if err := os.RemoveAll(app.OutDir); err != nil {
+		return fmt.Errorf("clear output directory: %w", err)
+	}
+
+	if err := os.MkdirAll(app.OutDir, 0o755); err != nil {
+		return fmt.Errorf("create output directory: %w", err)
 	}
 
 	return nil

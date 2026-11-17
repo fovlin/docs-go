@@ -349,3 +349,19 @@ func TestFindPageByURLCaseAndHTMLSuffix(t *testing.T) {
 		t.Fatalf("html-suffix page = %+v", page)
 	}
 }
+
+func TestBuildRejectsOutputOverlap(t *testing.T) {
+	root := t.TempDir()
+	writeTestProject(t, root)
+	writeFile(t, filepath.Join(root, "config", "docs.json"), `{
+		"title": "Test docs",
+		"src_dir": "docs",
+		"out_dir": "docs"
+	}`)
+
+	app := loadTestProject(t, root)
+	err := runBuild(app)
+	if err == nil || !strings.Contains(err.Error(), "out_dir must not overlap") {
+		t.Fatalf("expected output overlap error, got %v", err)
+	}
+}

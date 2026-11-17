@@ -21,16 +21,16 @@ func (app *App) parsePage(page *Page) (*markdown.Document, error) {
 }
 
 func (app *App) renderPageHTML(page *Page) ([]byte, error) {
-	parsed, err := app.parsePage(page)
+	document, err := app.parsePage(page)
 	if err != nil {
 		return nil, err
 	}
 
-	page.Heading = parsed.FirstH1
+	page.Heading = document.FirstH1
 	if page.Heading == "" {
 		page.Heading = humanizeTitle(page.SourcePath)
 	}
-	page.Description = truncateRunes(strings.TrimSpace(parsed.FirstParagraph), 160)
+	page.Description = truncateRunes(strings.TrimSpace(document.FirstParagraph), 160)
 	if page.Description == "" {
 		page.Description = app.Description
 	}
@@ -39,10 +39,10 @@ func (app *App) renderPageHTML(page *Page) ([]byte, error) {
 	state.Nav = app.navFor(page.URL)
 	state.Sidebar = app.sidebarFor(page.URL)
 	app.applyNavigation(state)
-	state.Body = string(renderMarkdown(parsed, func(destination string, image bool) string {
+	state.Body = string(renderMarkdown(document, func(destination string, image bool) string {
 		return app.resolveDestination(page, destination, image)
 	}))
-	state.Outline = filterOutline(parsed.Headings, app.Outline.Level)
+	state.Outline = filterOutline(document.Headings, app.Outline.Level)
 	state.EditURL = app.editURL(page)
 	state.LastUpdated = app.lastUpdated(page)
 	app.fillPageChrome(state)

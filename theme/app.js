@@ -10,7 +10,7 @@
 	}
 
 	var data = readBootstrap() || {};
-	var ui = data.ui || {};
+	var ui = data.ui || data;
 
 	var THEME_KEY = "docs-go-theme";
 	var root = document.documentElement;

@@ -99,11 +99,7 @@ func LoadApp(projectRoot, configFile, srcFlag, outFlag string) (*App, error) {
 	}
 	app.AssetVersion = app.themeVersion()
 
-	payload, err := json.Marshal(struct {
-		UI UIConfig `json:"ui"`
-	}{
-		UI: app.UI,
-	})
+	payload, err := json.Marshal(app.UI)
 	if err != nil {
 		return nil, fmt.Errorf("encode bootstrap: %w", err)
 	}
