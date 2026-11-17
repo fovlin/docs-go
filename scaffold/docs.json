@@ -3,6 +3,7 @@
   "description": "A documentation site built with docs-go.",
   "lang": "en",
   "base": "/",
+  "edit_link": "https://github.com/fovlin/docs-go/",
   "src_dir": "docs",
   "out_dir": "dist",
   "public_dir": "public",
