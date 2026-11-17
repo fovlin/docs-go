@@ -285,7 +285,7 @@ func readAsset(directory, relative string, source bool) ([]byte, bool) {
 
 func resolveAssetTarget(root, target string) (string, bool) {
 	resolved, err := filepath.EvalSymlinks(target)
-	if err != nil || !isInside(root, resolved) {
+	if err != nil || !isWithin(root, resolved) {
 		return "", false
 	}
 	return resolved, true

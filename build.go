@@ -145,12 +145,12 @@ func (app *App) validateOutput() error {
 	srcDir := filepath.Clean(app.SrcDir)
 	publicDir := filepath.Clean(app.PublicDir)
 
-	if output == root || isInside(output, root) {
+	if isWithin(output, root) {
 		return fmt.Errorf("out_dir must not be the project root or contain it")
 	}
 
 	for _, directory := range []string{srcDir, publicDir} {
-		if output == directory || isInside(output, directory) || isInside(directory, output) {
+		if isWithin(output, directory) || isWithin(directory, output) {
 			return fmt.Errorf("out_dir must not overlap %s", directory)
 		}
 	}
@@ -167,12 +167,10 @@ func (app *App) validateOutput() error {
 	return nil
 }
 
-func isInside(parent string, child string) bool {
+// isWithin reports whether child is parent itself or a descendant of parent.
+func isWithin(parent, child string) bool {
 	parent = filepath.Clean(parent)
 	child = filepath.Clean(child)
-	if parent == child {
-		return false
-	}
 
 	relative, err := filepath.Rel(parent, child)
 	if err != nil {
