@@ -30,8 +30,8 @@ func TestScanFenceRun(t *testing.T) {
 	if specs[1].kind != blockCode || !specs[1].fenced {
 		t.Fatalf("middle block = %+v", specs[1])
 	}
-	if specs[1].start != 1 || specs[1].end != 6 {
-		t.Fatalf("fence range = [%d,%d)", specs[1].start, specs[1].end)
+	if specs[1].start != 1 || specs[1].end != 5 {
+		t.Fatalf("fence range = [%d,%d]", specs[1].start, specs[1].end)
 	}
 	if specs[1].fenceChar != '`' || specs[1].fenceLength != 3 || specs[1].fenceInfo != "go" {
 		t.Fatalf("fence metadata = %+v", specs[1])
@@ -42,7 +42,7 @@ func TestScanUnclosedFence(t *testing.T) {
 	lines := strings.Split("```go\ncode\n", "\n")
 	specs := scanBlocks(lines)
 
-	if len(specs) != 1 || specs[0].kind != blockCode || specs[0].end != len(lines) {
+	if len(specs) != 1 || specs[0].kind != blockCode || specs[0].end != len(lines)-1 {
 		t.Fatalf("specs = %+v", specs)
 	}
 }
@@ -106,7 +106,15 @@ func TestScanContainerRun(t *testing.T) {
 	if specs[0].containerKind != "tip" || specs[0].containerTitle != "TIP" {
 		t.Fatalf("container metadata = %+v", specs[0])
 	}
-	if specs[0].contentStart != 1 || specs[0].contentEnd != 2 {
-		t.Fatalf("container content range = [%d,%d)", specs[0].contentStart, specs[0].contentEnd)
+	if specs[0].start != 0 || specs[0].end != 2 || !specs[0].containerClosed {
+		t.Fatalf("container range = [%d,%d], closed=%v", specs[0].start, specs[0].end, specs[0].containerClosed)
+	}
+}
+
+func TestAdjacentDifferentListsAreSeparateSpecs(t *testing.T) {
+	lines := strings.Split("- a\n* b\n", "\n")
+	specs := scanBlocks(lines)
+	if len(specs) != 2 || specs[0].kind != blockList || specs[1].kind != blockList {
+		t.Fatalf("specs = %+v", specs)
 	}
 }

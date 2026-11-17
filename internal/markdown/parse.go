@@ -136,21 +136,29 @@ func (p *parser) parseBlock(lines []string, spec blockSpec) block {
 		return block{kind: blockThematicBreak}
 
 	case blockBlockquote:
-		inner := make([]string, 0, spec.end-spec.start)
-		for j := spec.start; j < spec.end; j++ {
+		inner := make([]string, 0, spec.end-spec.start+1)
+		for j := spec.start; j <= spec.end; j++ {
 			inner = append(inner, stripBlockquote(lines[j]))
 		}
 		return block{kind: blockBlockquote, children: p.parseBlocks(trimTrailingBlank(inner))}
 
 	case blockList:
-		return p.parseListRange(lines, spec.end, spec.listItems)
+		return p.parseListRange(lines, spec.listItems)
 
 	case blockContainer:
+		innerEnd := spec.end
+		if spec.containerClosed {
+			innerEnd--
+		}
+		children := []string(nil)
+		if innerEnd >= spec.start+1 {
+			children = lines[spec.start+1 : innerEnd+1]
+		}
 		return block{
 			kind:           blockContainer,
 			containerKind:  spec.containerKind,
 			containerTitle: spec.containerTitle,
-			children:       p.parseBlocks(trimTrailingBlank(lines[spec.contentStart:spec.contentEnd])),
+			children:       p.parseBlocks(trimTrailingBlank(children)),
 		}
 
 	case blockTable:
@@ -159,7 +167,7 @@ func (p *parser) parseBlock(lines []string, spec blockSpec) block {
 
 	return block{
 		kind:    blockParagraph,
-		inlines: parseInline(strings.Join(lines[spec.start:spec.end], "\n")),
+		inlines: parseInline(strings.Join(lines[spec.start:spec.end+1], "\n")),
 	}
 }
 
@@ -170,15 +178,15 @@ func parseFenceRange(lines []string, start, end int, char byte, length int, info
 	}
 
 	contentEnd := end
-	if contentEnd > start+1 && fenceClose(lines[contentEnd-1], char, length) {
+	if contentEnd > start && fenceClose(lines[contentEnd], char, length) {
 		contentEnd--
-	} else if contentEnd == len(lines) && contentEnd > start+1 && lines[contentEnd-1] == "" {
+	} else if contentEnd == len(lines)-1 && lines[contentEnd] == "" {
 		contentEnd--
 	}
 
 	indent := blockIndent(lines[start])
 	content := make([]string, 0, contentEnd-start)
-	for i := start + 1; i < contentEnd; i++ {
+	for i := start + 1; i <= contentEnd; i++ {
 		content = append(content, stripIndent(lines[i], indent))
 	}
 
@@ -191,8 +199,8 @@ func parseFenceRange(lines []string, start, end int, char byte, length int, info
 }
 
 func parseIndentedCodeRange(lines []string, start, end int) string {
-	content := make([]string, 0, end-start)
-	for i := start; i < end; i++ {
+	content := make([]string, 0, end-start+1)
+	for i := start; i <= end; i++ {
 		if strings.TrimSpace(lines[i]) == "" {
 			content = append(content, "")
 			continue
@@ -208,7 +216,7 @@ func parseIndentedCodeRange(lines []string, start, end int) string {
 	return code
 }
 
-func (p *parser) parseListRange(lines []string, end int, items []listItemSpec) block {
+func (p *parser) parseListRange(lines []string, items []listItemSpec) block {
 	first := items[0].marker
 	list := block{
 		kind:    blockList,
@@ -218,7 +226,7 @@ func (p *parser) parseListRange(lines []string, end int, items []listItemSpec) b
 
 	for _, item := range items {
 		itemLines := []string{item.marker.content}
-		for i := item.start + 1; i < item.end; i++ {
+		for i := item.start + 1; i <= item.end; i++ {
 			if strings.TrimSpace(lines[i]) == "" {
 				continue
 			}
@@ -612,36 +620,34 @@ func collectContainer(lines []string, start int) ([]string, int, bool) {
 	depth := 1
 	var fenceChar byte
 	var fenceLength int
+	end := start
 
-	i := start + 1
-	for i < len(lines) {
-		line := lines[i]
+	for end+1 < len(lines) {
+		line := lines[end+1]
 
 		if fenceChar != 0 {
 			inner = append(inner, line)
 			if fenceClose(line, fenceChar, fenceLength) {
 				fenceChar = 0
 			}
-			i++
+			end++
 			continue
 		}
 
 		if char, length, _, ok := fenceStart(line); ok {
 			fenceChar, fenceLength = char, length
 			inner = append(inner, line)
-			i++
+			end++
 			continue
 		}
 
-		// is container close?
-		if indentWidth(line) <= 3 && strings.TrimSpace(line) == ":::" {
+		if isContainerClose(line) {
 			depth--
 			if depth == 0 {
-				return trimTrailingBlank(inner), i + 1, true
+				return trimTrailingBlank(inner), end + 1, true
 			}
-
 			inner = append(inner, line)
-			i++
+			end++
 			continue
 		}
 
@@ -650,10 +656,10 @@ func collectContainer(lines []string, start int) ([]string, int, bool) {
 		}
 
 		inner = append(inner, line)
-		i++
+		end++
 	}
 
-	return trimTrailingBlank(inner), i, false
+	return trimTrailingBlank(inner), end, false
 }
 
 func tableDelimiter(line string) ([]string, bool) {

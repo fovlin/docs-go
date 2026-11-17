@@ -31,10 +31,9 @@ type blockSpec struct {
 
 	listItems []listItemSpec
 
-	containerKind  string
-	containerTitle string
-	contentStart   int
-	contentEnd     int
+	containerKind   string
+	containerTitle  string
+	containerClosed bool
 
 	tableAligns []string
 	tableRows   []tableRowSpec
@@ -51,11 +50,14 @@ func scanBlocks(lines []string) []blockSpec {
 		}
 
 		spec := scanBlock(lines, i)
-		if spec.end <= i {
-			spec.end = i + 1
+		if spec.end < i {
+			// Defensive: a scanner must always advance, even if a future
+			// recognizer forgets to consume its first line.
+			spec.end = i
 		}
+
 		specs = append(specs, spec)
-		i = spec.end
+		i = spec.end + 1
 	}
 
 	return specs
@@ -85,27 +87,26 @@ func scanBlock(lines []string, start int) blockSpec {
 		spec.kind = blockHeading
 		spec.headingLevel = level
 		spec.headingText = text
-		spec.end = start + 1
+		spec.end = start
 		return spec
 	}
 
 	if thematicBreak(line) {
 		spec.kind = blockThematicBreak
-		spec.end = start + 1
+		spec.end = start
 		return spec
 	}
 
 	if blockquoteStart(line) {
 		spec.kind = blockBlockquote
 		spec.end = scanBlockquoteEnd(lines, start)
-		spec.contentStart = start
-		spec.contentEnd = spec.end
 		return spec
 	}
 
 	if _, ok := parseListMarker(line); ok {
 		spec.kind = blockList
-		spec.end, spec.listItems = scanListEnd(lines, start)
+		end, items := scanListEnd(lines, start)
+		spec.end, spec.listItems = end, items
 		return spec
 	}
 
@@ -113,13 +114,9 @@ func scanBlock(lines []string, start int) blockSpec {
 		spec.kind = blockContainer
 		spec.containerKind = kind
 		spec.containerTitle = title
-		var closed bool
-		spec.end, closed = scanContainerEnd(lines, start)
-		spec.contentStart = start + 1
-		spec.contentEnd = spec.end
-		if closed {
-			spec.contentEnd--
-		}
+		end, closed := scanContainerEnd(lines, start)
+		spec.end = end
+		spec.containerClosed = closed
 		return spec
 	}
 
@@ -135,7 +132,7 @@ func scanBlock(lines []string, start int) blockSpec {
 			header: true,
 			cells:  splitTableRow(lines[start]),
 		})
-		for i := start + 2; i < spec.end; i++ {
+		for i := start + 2; i <= spec.end; i++ {
 			spec.tableRows = append(spec.tableRows, tableRowSpec{
 				line:  i,
 				cells: splitTableRow(lines[i]),
@@ -151,104 +148,111 @@ func scanBlock(lines []string, start int) blockSpec {
 
 func scanFenceEnd(lines []string, start int) int {
 	char, length, _, _ := fenceStart(lines[start])
-	i := start + 1
-	for i < len(lines) {
-		if fenceClose(lines[i], char, length) {
-			return i + 1
+	end := start
+	for end+1 < len(lines) {
+		if fenceClose(lines[end+1], char, length) {
+			return end + 1
 		}
-		i++
+		end++
 	}
-	return len(lines)
+	return end
 }
 
 func scanIndentedCodeEnd(lines []string, start int) int {
-	i := start
-	for i < len(lines) {
-		if strings.TrimSpace(lines[i]) == "" {
-			next := i + 1
-			for next < len(lines) && strings.TrimSpace(lines[next]) == "" {
-				next++
-			}
-			if next >= len(lines) || indentWidth(lines[next]) < 4 {
-				return i
-			}
-			i = next
-			continue
+	end := start
+	for {
+		next := end + 1
+		for next < len(lines) && strings.TrimSpace(lines[next]) == "" {
+			next++
 		}
-		if indentWidth(lines[i]) < 4 {
-			break
+		if next >= len(lines) || indentWidth(lines[next]) < 4 {
+			return end
 		}
-		i++
+		end = next
 	}
-	return i
 }
 
 func scanBlockquoteEnd(lines []string, start int) int {
-	i := start
-	for i < len(lines) && blockquoteStart(lines[i]) {
-		i++
+	end := start
+	for end+1 < len(lines) && blockquoteStart(lines[end+1]) {
+		end++
 	}
-	return i
+	return end
 }
 
 func scanListEnd(lines []string, start int) (int, []listItemSpec) {
 	first, _ := parseListMarker(lines[start])
 	items := make([]listItemSpec, 0, 4)
-	i := start
 	baseIndent := first.indent
+	end := start
+	next := start
 
-	for i < len(lines) {
-		marker, ok := parseListMarker(lines[i])
+	for next < len(lines) {
+		marker, ok := parseListMarker(lines[next])
 		if !ok || marker.indent < baseIndent || !sameListMarker(marker, first) {
 			break
 		}
 
-		itemStart := i
-		i++
-		for i < len(lines) {
-			next := i
-			for next < len(lines) && strings.TrimSpace(lines[next]) == "" {
-				next++
+		itemStart := next
+		itemEnd := next
+		next++
+
+		for next < len(lines) {
+			if strings.TrimSpace(lines[next]) == "" {
+				blankEnd := next
+				for blankEnd+1 < len(lines) && strings.TrimSpace(lines[blankEnd+1]) == "" {
+					blankEnd++
+				}
+				itemEnd = blankEnd
+				if blankEnd+1 >= len(lines) {
+					next = len(lines)
+					break
+				}
+				if indentWidth(lines[blankEnd+1]) < marker.indent+2 {
+					next = blankEnd + 1
+					break
+				}
+				itemEnd = blankEnd + 1
+				next = blankEnd + 2
+				continue
 			}
-			if next >= len(lines) {
-				i = next
+
+			if indentWidth(lines[next]) < marker.indent+2 {
 				break
 			}
-			i = next
-			if indentWidth(lines[i]) < marker.indent+2 {
-				break
-			}
-			i++
+			itemEnd = next
+			next++
 		}
 
-		items = append(items, listItemSpec{start: itemStart, end: i, marker: marker})
+		items = append(items, listItemSpec{start: itemStart, end: itemEnd, marker: marker})
+		end = itemEnd
 	}
 
-	return i, items
+	return end, items
 }
 
 func scanTableEnd(lines []string, start int) int {
-	i := start + 2
-	for i < len(lines) && isTableRaw(lines[i]) {
-		i++
+	end := start + 1
+	for end+1 < len(lines) && isTableRaw(lines[end+1]) {
+		end++
 	}
-	return i
+	return end
 }
 
 func scanContainerEnd(lines []string, start int) (int, bool) {
-	_, next, closed := collectContainer(lines, start)
-	return next, closed
+	_, end, closed := collectContainer(lines, start)
+	return end, closed
 }
 
 func scanParagraphEnd(lines []string, start int) int {
-	i := start + 1
-	for i < len(lines) {
-		if strings.TrimSpace(lines[i]) == "" || startsBlock(lines, i) {
+	end := start
+	for end+1 < len(lines) {
+		if strings.TrimSpace(lines[end+1]) == "" || startsBlock(lines, end+1) {
 			break
 		}
-		i++
+		end++
 	}
-	return i
+	return end
 }
 
 func startsBlock(lines []string, i int) bool {
