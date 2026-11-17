@@ -29,7 +29,8 @@ type blockSpec struct {
 	headingLevel int
 	headingText  string
 
-	listItems []listItemSpec
+	listMarker listMarker
+	listItems  []listItemSpec
 
 	containerKind   string
 	containerTitle  string
@@ -64,69 +65,30 @@ func scanBlocks(lines []string) []blockSpec {
 }
 
 func scanBlock(lines []string, start int) blockSpec {
-	line := lines[start]
-	spec := blockSpec{start: start}
-
-	if char, length, info, ok := fenceStart(line); ok {
-		spec.kind = blockCode
-		spec.fenced = true
-		spec.fenceChar = char
-		spec.fenceLength = length
-		spec.fenceInfo = info
-		spec.end = scanFenceEnd(lines, start)
+	spec, ok := matchBlockStart(lines, start)
+	if !ok {
+		spec = blockSpec{kind: blockParagraph, start: start}
+		spec.end = scanParagraphEnd(lines, start)
 		return spec
 	}
 
-	if indentWidth(line) >= 4 {
-		spec.kind = blockCode
-		spec.end = scanIndentedCodeEnd(lines, start)
-		return spec
-	}
-
-	if level, text, ok := headingStart(line); ok {
-		spec.kind = blockHeading
-		spec.headingLevel = level
-		spec.headingText = text
-		spec.end = start
-		return spec
-	}
-
-	if thematicBreak(line) {
-		spec.kind = blockThematicBreak
-		spec.end = start
-		return spec
-	}
-
-	if blockquoteStart(line) {
-		spec.kind = blockBlockquote
-		spec.end = scanBlockquoteEnd(lines, start)
-		return spec
-	}
-
-	if _, ok := parseListMarker(line); ok {
-		spec.kind = blockList
-		end, items := scanListEnd(lines, start)
-		spec.end, spec.listItems = end, items
-		return spec
-	}
-
-	if kind, title, ok := containerStart(line); ok {
-		spec.kind = blockContainer
-		spec.containerKind = kind
-		spec.containerTitle = title
-		end, closed := scanContainerEnd(lines, start)
-		spec.end = end
-		spec.containerClosed = closed
-		return spec
-	}
-
-	if isTableStart(lines, start) {
-		spec.kind = blockTable
-		spec.end = scanTableEnd(lines, start)
-		spec.tableAligns, _ = tableDelimiter(lines[start+1])
-		if len(spec.tableAligns) == 0 {
-			spec.tableAligns = []string{""}
+	switch spec.kind {
+	case blockCode:
+		if spec.fenced {
+			spec.end = scanFenceEnd(lines, spec)
+		} else {
+			spec.end = scanIndentedCodeEnd(lines, start)
 		}
+	case blockHeading, blockThematicBreak:
+		spec.end = start
+	case blockBlockquote:
+		spec.end = scanBlockquoteEnd(lines, start)
+	case blockList:
+		spec.end, spec.listItems = scanListEnd(lines, spec)
+	case blockContainer:
+		spec.end, spec.containerClosed = scanContainerEnd(lines, start)
+	case blockTable:
+		spec.end = scanTableEnd(lines, start)
 		spec.tableRows = append(spec.tableRows, tableRowSpec{
 			line:   start,
 			header: true,
@@ -138,19 +100,78 @@ func scanBlock(lines []string, start int) blockSpec {
 				cells: splitTableRow(lines[i]),
 			})
 		}
-		return spec
 	}
 
-	spec.kind = blockParagraph
-	spec.end = scanParagraphEnd(lines, start)
 	return spec
 }
 
-func scanFenceEnd(lines []string, start int) int {
-	char, length, _, _ := fenceStart(lines[start])
-	end := start
+// matchBlockStart identifies a block from its first line and fills the
+// metadata that does not require scanning the rest of the block. A normal
+// paragraph returns false.
+func matchBlockStart(lines []string, start int) (blockSpec, bool) {
+	line := lines[start]
+	spec := blockSpec{start: start}
+
+	if char, length, info, ok := fenceStart(line); ok {
+		spec.kind = blockCode
+		spec.fenced = true
+		spec.fenceChar = char
+		spec.fenceLength = length
+		spec.fenceInfo = info
+		return spec, true
+	}
+
+	if indentWidth(line) >= 4 {
+		spec.kind = blockCode
+		return spec, true
+	}
+
+	if level, text, ok := headingStart(line); ok {
+		spec.kind = blockHeading
+		spec.headingLevel = level
+		spec.headingText = text
+		return spec, true
+	}
+
+	if thematicBreak(line) {
+		spec.kind = blockThematicBreak
+		return spec, true
+	}
+
+	if blockquoteStart(line) {
+		spec.kind = blockBlockquote
+		return spec, true
+	}
+
+	if marker, ok := parseListMarker(line); ok {
+		spec.kind = blockList
+		spec.listMarker = marker
+		return spec, true
+	}
+
+	if kind, title, ok := containerStart(line); ok {
+		spec.kind = blockContainer
+		spec.containerKind = kind
+		spec.containerTitle = title
+		return spec, true
+	}
+
+	if isTableStart(lines, start) {
+		spec.kind = blockTable
+		spec.tableAligns, _ = tableDelimiter(lines[start+1])
+		if len(spec.tableAligns) == 0 {
+			spec.tableAligns = []string{""}
+		}
+		return spec, true
+	}
+
+	return spec, false
+}
+
+func scanFenceEnd(lines []string, spec blockSpec) int {
+	end := spec.start
 	for end+1 < len(lines) {
-		if fenceClose(lines[end+1], char, length) {
+		if fenceClose(lines[end+1], spec.fenceChar, spec.fenceLength) {
 			return end + 1
 		}
 		end++
@@ -180,12 +201,12 @@ func scanBlockquoteEnd(lines []string, start int) int {
 	return end
 }
 
-func scanListEnd(lines []string, start int) (int, []listItemSpec) {
-	first, _ := parseListMarker(lines[start])
+func scanListEnd(lines []string, spec blockSpec) (int, []listItemSpec) {
+	first := spec.listMarker
 	items := make([]listItemSpec, 0, 4)
 	baseIndent := first.indent
-	end := start
-	next := start
+	end := spec.start
+	next := spec.start
 
 	for next < len(lines) {
 		marker, ok := parseListMarker(lines[next])
@@ -247,34 +268,13 @@ func scanContainerEnd(lines []string, start int) (int, bool) {
 func scanParagraphEnd(lines []string, start int) int {
 	end := start
 	for end+1 < len(lines) {
-		if strings.TrimSpace(lines[end+1]) == "" || startsBlock(lines, end+1) {
+		if strings.TrimSpace(lines[end+1]) == "" {
+			break
+		}
+		if _, ok := matchBlockStart(lines, end+1); ok {
 			break
 		}
 		end++
 	}
 	return end
-}
-
-func startsBlock(lines []string, i int) bool {
-	line := lines[i]
-
-	if _, _, _, ok := fenceStart(line); ok {
-		return true
-	}
-	if indentWidth(line) >= 4 {
-		return true
-	}
-	if _, _, ok := headingStart(line); ok {
-		return true
-	}
-	if thematicBreak(line) || blockquoteStart(line) {
-		return true
-	}
-	if _, ok := parseListMarker(line); ok {
-		return true
-	}
-	if _, _, ok := containerStart(line); ok {
-		return true
-	}
-	return isTableStart(lines, i)
 }

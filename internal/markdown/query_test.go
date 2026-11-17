@@ -118,3 +118,31 @@ func TestAdjacentDifferentListsAreSeparateSpecs(t *testing.T) {
 		t.Fatalf("specs = %+v", specs)
 	}
 }
+
+func TestMatchBlockStart(t *testing.T) {
+	cases := []struct {
+		source string
+		want   blockKind
+	}{
+		{"# heading\n", blockHeading},
+		{"```\ncode\n```\n", blockCode},
+		{"    code\n", blockCode},
+		{"---\n", blockThematicBreak},
+		{"> quote\n", blockBlockquote},
+		{"- item\n", blockList},
+		{"::: tip\nx\n:::\n", blockContainer},
+		{"| a | b |\n| --- | --- |\n", blockTable},
+	}
+
+	for _, tc := range cases {
+		lines := strings.Split(tc.source, "\n")
+		spec, ok := matchBlockStart(lines, 0)
+		if !ok || spec.kind != tc.want {
+			t.Errorf("%q: got %+v, %v; want %v", tc.source, spec, ok, tc.want)
+		}
+	}
+
+	if _, ok := matchBlockStart([]string{"plain text"}, 0); ok {
+		t.Fatal("plain paragraph matched a block start")
+	}
+}
