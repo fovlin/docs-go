@@ -159,11 +159,23 @@ func TestEntity(t *testing.T) {
 	}
 }
 
-func TestLineBreakSplitsParagraph(t *testing.T) {
+func TestLineBreakUsesBR(t *testing.T) {
 	html := render("one  \ntwo\n")
 
-	if !strings.Contains(html, "<p>one  </p>\n<p>two</p>") {
-		t.Errorf("line break should split the paragraph: %s", html)
+	if !strings.Contains(html, "<p>one<br>\ntwo</p>") {
+		t.Errorf("line break should use br: %s", html)
+	}
+}
+
+func TestBlankLineSeparatesParagraphs(t *testing.T) {
+	html := render("one\n\ntwo\n")
+
+	if !strings.Contains(html, "<p>one</p>\n<p>two</p>") {
+		t.Errorf("blank line should separate paragraphs: %s", html)
+	}
+
+	if strings.Contains(html, "<br>") {
+		t.Errorf("blank line should not add br: %s", html)
 	}
 }
 

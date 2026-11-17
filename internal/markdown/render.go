@@ -225,7 +225,7 @@ func (r *renderer) inlines(items []inline) {
 			r.builder.WriteString(item.text)
 
 		case inlineSoftBreak:
-			r.builder.WriteByte('\n')
+			r.builder.WriteString("<br>\n")
 
 		case inlineHardBreak:
 			r.builder.WriteString("<br>\n")

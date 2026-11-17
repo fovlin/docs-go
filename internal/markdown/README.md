@@ -2,12 +2,13 @@
 
 ## Paragraphs
 
-Each non-blank line is a paragraph.
+Consecutive lines render with `<br>`; a blank line starts a new paragraph.
 
 ```md
-A plain line.
+first line
+second line
 
-Another line.
+new paragraph
 ```
 
 ## Headings

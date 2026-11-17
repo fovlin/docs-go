@@ -101,124 +101,91 @@ func Parse(source []byte) *Document {
 }
 
 func (p *parser) parseBlocks(lines []string) []block {
-	var blocks = make([]block, 0, len(lines))
+	specs := scanBlocks(lines)
+	blocks := make([]block, 0, len(specs))
 
-	for i := 0; i < len(lines); {
-		next, ended := skipBlank(lines, i);
-		if ended {
-			break
+	for _, spec := range specs {
+		start := spec.start
+		for start < spec.end {
+			b, next := p.parseBlock(lines, spec, start)
+			if next <= start || next > spec.end {
+				next = spec.end
+			}
+			blocks = append(blocks, b)
+			start = next
 		}
-		i = next
-
-		b, next := p.parseBlock(lines, i)
-		i = next
-
-		blocks = append(blocks, b)
 	}
 
 	return blocks
 }
 
-func (p *parser) parseBlock(lines []string, i int) (block, int) {
-	line := lines[i]
+func (p *parser) parseBlock(lines []string, spec blockSpec, start int) (block, int) {
+	switch spec.kind {
+	case blockCode:
+		if spec.fenced {
+			code, language := parseFenceRange(lines, start, spec.end, spec.fenceChar, spec.fenceLength, spec.fenceInfo)
+			return block{kind: blockCode, text: code, language: language}, spec.end
+		}
+		return block{kind: blockCode, text: parseIndentedCodeRange(lines, start, spec.end)}, spec.end
 
-	// ``` code block
-	if char, length, info, ok := fenceStart(line); ok {
-		code, language, next := parseFence(lines, i, char, length, info)
-		return block{
-			kind:     blockCode,
-			text:     code,
-			language: language,
-		}, next
-	}
-
-	// tab code block
-	if indentWidth(line) >= 4 {
-		code, next := parseIndentedCode(lines, i)
-		return block{kind: blockCode, text: code}, next
-	}
-
-	if level, text, ok := headingStart(line); ok {
-		inlines := parseInline(text)
+	case blockHeading:
+		inlines := parseInline(spec.headingText)
 		id := p.uniqueHeadingID(plainInlines(inlines))
 		headingText := plainInlines(inlines)
 
-		p.headings = append(p.headings, Heading{
-			Level: level,
-			Text:  headingText,
-			ID:    id,
-		})
-
-		if level == 1 && p.firstH1 == "" {
+		p.headings = append(p.headings, Heading{Level: spec.headingLevel, Text: headingText, ID: id})
+		if spec.headingLevel == 1 && p.firstH1 == "" {
 			p.firstH1 = headingText
 		}
 
-		return block{
-			kind:    blockHeading,
-			level:   level,
-			id:      id,
-			inlines: inlines,
-		}, i + 1
-	}
+		return block{kind: blockHeading, level: spec.headingLevel, id: id, inlines: inlines}, start + 1
 
-	// is --- / *** ?
-	if thematicBreak(line) {
-		return block{kind: blockThematicBreak}, i + 1
-	}
+	case blockThematicBreak:
+		return block{kind: blockThematicBreak}, start + 1
 
-	// >... ?
-	if blockquoteStart(line) {
-		inner, next := p.collectBlockquote(lines, i)
-		return block{
-			kind:     blockBlockquote,
-			children: p.parseBlocks(inner),
-		}, next
-	}
+	case blockBlockquote:
+		inner := make([]string, 0, spec.end-start)
+		for j := start; j < spec.end; j++ {
+			inner = append(inner, stripBlockquote(lines[j]))
+		}
+		return block{kind: blockBlockquote, children: p.parseBlocks(trimTrailingBlank(inner))}, spec.end
 
-	if marker, ok := parseListMarker(line); ok {
-		list, next := p.parseList(lines, i, marker)
-		return list, next
-	}
+	case blockList:
+		return p.parseListRange(lines, start, spec.end, spec.listItems)
 
-	if kind, title, ok := containerStart(line); ok {
-		inner, next := collectContainer(lines, i)
+	case blockContainer:
 		return block{
 			kind:           blockContainer,
-			containerKind:  kind,
-			containerTitle: title,
-			children:       p.parseBlocks(inner),
-		}, next
-	}
+			containerKind:  spec.containerKind,
+			containerTitle: spec.containerTitle,
+			children:       p.parseBlocks(trimTrailingBlank(lines[spec.contentStart:spec.contentEnd])),
+		}, spec.end
 
-	if isTableStart(lines, i) {
-		table, next := p.parseTable(lines, i)
-		return table, next
+	case blockTable:
+		return parseTableSpec(spec), spec.end
 	}
 
 	return block{
 		kind:    blockParagraph,
-		inlines: parseInline(lines[i]),
-	}, i + 1
+		inlines: parseInline(strings.Join(lines[start:spec.end], "\n")),
+	}, spec.end
 }
 
-func parseFence(lines []string, start int, char byte, length int, info string) (string, string, int) {
+func parseFenceRange(lines []string, start, end int, char byte, length int, info string) (string, string) {
 	language := ""
 	if fields := strings.Fields(info); len(fields) > 0 {
 		language = strings.ToLower(fields[0])
 	}
 
-	content := make([]string, 0, 8)
+	contentEnd := end
+	if contentEnd > start+1 && fenceClose(lines[contentEnd-1], char, length) {
+		contentEnd--
+	}
+
 	indent := blockIndent(lines[start])
-	i := start + 1
-
-	for i < len(lines) {
-		if fenceClose(lines[i], char, length) {
-			i++
-			break
-		}
-
+	content := make([]string, 0, contentEnd-start)
+	for i := start + 1; i < contentEnd; i++ {
 		content = append(content, stripIndent(lines[i], indent))
-		i++
 	}
 
 	code := strings.Join(content, "\n")
@@ -226,27 +193,17 @@ func parseFence(lines []string, start int, char byte, length int, info string) (
 		code += "\n"
 	}
 
-	return code, language, i
+	return code, language
 }
 
-func parseIndentedCode(lines []string, start int) (string, int) {
-	content := make([]string, 0, 8)
-	i := start
-
-	for i < len(lines) {
-		next, ended := skipBlank(lines, i);
-		if ended {
-			break
+func parseIndentedCodeRange(lines []string, start, end int) string {
+	content := make([]string, 0, end-start)
+	for i := start; i < end; i++ {
+		if strings.TrimSpace(lines[i]) == "" {
+			content = append(content, "")
+			continue
 		}
-
-		i = next
-
-		if indentWidth(lines[i]) < 4 {
-			break
-		}
-
 		content = append(content, stripIndent(lines[i], 4))
-		i++
 	}
 
 	code := strings.Join(trimTrailingBlank(content), "\n")
@@ -254,109 +211,41 @@ func parseIndentedCode(lines []string, start int) (string, int) {
 		code += "\n"
 	}
 
-	return code, i
+	return code
 }
 
-func (p *parser) collectBlockquote(lines []string, start int) ([]string, int) {
-	inner := make([]string, 0, 8)
-	i := start
-
-	for i < len(lines) {
-		line := lines[i]
-
-		if strings.TrimSpace(line) == "" {
-			break
-		}
-
-		if blockquoteStart(line) {
-			inner = append(inner, stripBlockquote(line))
-			i++
-			continue
-		}
-
-		break
-	}
-
-	return trimTrailingBlank(inner), i
-}
-
-func (p *parser) parseList(lines []string, start int, first listMarker) (block, int) {
+func (p *parser) parseListRange(lines []string, start, end int, items []listItemSpec) (block, int) {
+	first := items[0].marker
 	list := block{
 		kind:    blockList,
 		ordered: first.ordered,
 		start:   first.start,
 	}
 
-	i := start
-	baseIndent := first.indent
-
-	for i < len(lines) {
-		marker, ok := parseListMarker(lines[i])
-		if !ok || marker.indent < baseIndent || !sameListMarker(marker, first) {
-			break
+	for _, item := range items {
+		itemLines := []string{item.marker.content}
+		for i := item.start + 1; i < item.end; i++ {
+			if strings.TrimSpace(lines[i]) == "" {
+				continue
+			}
+			itemLines = append(itemLines, stripIndent(lines[i], item.marker.indent+2))
 		}
 
-		itemLines, next := p.collectListItem(lines, i, marker)
 		list.children = append(list.children, block{
 			kind:     blockListItem,
 			children: p.parseBlocks(trimTrailingBlank(itemLines)),
 		})
-		i = next
 	}
 
-	return list, i
+	return list, end
 }
 
-// collectListItem consumes one item until a sibling marker or an outdented
-// block. Blank lines stay inside the item and do not end the list; there are
-// no loose items and no lazy continuation lines.
-func (p *parser) collectListItem(lines []string, start int, marker listMarker) ([]string, int) {
-	itemLines := []string{marker.content}
-	i := start + 1
-
-	for i < len(lines) {
-		next, ended := skipBlank(lines, i);
-		if ended {
-			break
-		}
-		i = next
-
-		line := lines[i]
-
-		if indentWidth(line) < marker.indent+2 {
-			break
-		}
-
-		itemLines = append(itemLines, stripIndent(line, marker.indent+2))
-		i++
+func parseTableSpec(spec blockSpec) block {
+	table := block{kind: blockTable}
+	for _, row := range spec.tableRows {
+		table.children = append(table.children, tableRow(row.cells, spec.tableAligns, row.header))
 	}
-
-	return itemLines, i
-}
-
-func (p *parser) parseTable(lines []string, start int) (block, int) {
-	aligns, _ := tableDelimiter(lines[start+1])
-	if len(aligns) == 0 {
-		aligns = []string{""}
-	}
-
-	table := block{
-		kind:     blockTable,
-		children: []block{tableRow(splitTableRow(lines[start]), aligns, true)},
-	}
-
-	i := start + 2
-	for i < len(lines) {
-
-		if strings.TrimSpace(lines[i]) == "" || !isTableRaw(lines[i]) {
-			break
-		}
-
-		table.children = append(table.children, tableRow(splitTableRow(lines[i]), aligns, false))
-		i++
-	}
-
-	return table, i
+	return table
 }
 
 func tableRow(cells, aligns []string, header bool) block {
@@ -716,6 +605,10 @@ func containerStart(line string) (string, string, bool) {
 	}
 
 	return name, title, true
+}
+
+func isContainerClose(line string) bool {
+	return indentWidth(line) <= 3 && strings.TrimSpace(line) == ":::"
 }
 
 func collectContainer(lines []string, start int) ([]string, int) {
