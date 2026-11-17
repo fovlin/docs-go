@@ -2,7 +2,9 @@
 
 ## Paragraphs
 
-Consecutive lines render with `<br>`; a blank line starts a new paragraph.
+Consecutive lines render as one paragraph with `<br>` between lines; a blank
+line starts a new paragraph. Explicit breaks (two trailing spaces or a trailing
+backslash) are supported but render the same `<br>`.
 
 ```md
 first line
@@ -139,3 +141,16 @@ Inline tags pass through inside a paragraph.
 ```md
 Press <kbd>Ctrl</kbd> + <kbd>C</kbd>.
 ```
+
+## Differences from CommonMark
+
+- Every line break inside a paragraph renders as `<br>`; CommonMark renders
+  a plain newline as a space.
+- Indented code can interrupt a paragraph.
+- A blank line starts a new block; there is no lazy blockquote continuation.
+- Tables split cells before inline parsing, so `|` inside code spans is not protected.
+- Emphasis matching is greedy and does not implement CommonMark's delimiter-stack rules;
+  malformed delimiter runs degrade to text.
+- Only ATX headings are supported; no setext headings, autolinks, reference links,
+  footnotes or frontmatter.
+- Raw HTML is trusted content and is passed through unchanged.

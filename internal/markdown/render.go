@@ -59,6 +59,9 @@ func (r *renderer) block(item block) {
 
 	case blockThematicBreak:
 		r.builder.WriteString("<hr>\n")
+
+	default:
+		r.blocks(item.children)
 	}
 }
 
@@ -229,6 +232,12 @@ func (r *renderer) inlines(items []inline) {
 
 		case inlineHardBreak:
 			r.builder.WriteString("<br>\n")
+
+		default:
+			r.inlines(item.children)
+			if item.text != "" {
+				r.builder.WriteString(html.EscapeString(item.text))
+			}
 		}
 	}
 }

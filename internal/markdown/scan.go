@@ -11,7 +11,6 @@ type listItemSpec struct {
 }
 
 type tableRowSpec struct {
-	line   int
 	header bool
 	cells  []string
 }
@@ -90,13 +89,11 @@ func scanBlock(lines []string, start int) blockSpec {
 	case blockTable:
 		spec.end = scanTableEnd(lines, start)
 		spec.tableRows = append(spec.tableRows, tableRowSpec{
-			line:   start,
 			header: true,
 			cells:  splitTableRow(lines[start]),
 		})
 		for i := start + 2; i <= spec.end; i++ {
 			spec.tableRows = append(spec.tableRows, tableRowSpec{
-				line:  i,
 				cells: splitTableRow(lines[i]),
 			})
 		}
@@ -261,8 +258,44 @@ func scanTableEnd(lines []string, start int) int {
 }
 
 func scanContainerEnd(lines []string, start int) (int, bool) {
-	_, end, closed := collectContainer(lines, start)
-	return end, closed
+	depth := 1
+	var fenceChar byte
+	var fenceLength int
+	end := start
+
+	for end+1 < len(lines) {
+		line := lines[end+1]
+
+		if fenceChar != 0 {
+			if fenceClose(line, fenceChar, fenceLength) {
+				fenceChar = 0
+			}
+			end++
+			continue
+		}
+
+		if char, length, _, ok := fenceStart(line); ok {
+			fenceChar, fenceLength = char, length
+			end++
+			continue
+		}
+
+		if isContainerClose(line) {
+			depth--
+			if depth == 0 {
+				return end + 1, true
+			}
+			end++
+			continue
+		}
+
+		if _, _, ok := containerStart(line); ok {
+			depth++
+		}
+		end++
+	}
+
+	return end, false
 }
 
 func scanParagraphEnd(lines []string, start int) int {

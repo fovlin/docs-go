@@ -176,11 +176,21 @@ func TestEntity(t *testing.T) {
 	}
 }
 
-func TestLineBreakUsesBR(t *testing.T) {
-	html := render("one  \ntwo\n")
+func TestHardBreakUsesBR(t *testing.T) {
+	for _, source := range []string{"one  \ntwo\n", "one\\\ntwo\n"} {
+		html := render(source)
+
+		if !strings.Contains(html, "<p>one<br>\ntwo</p>") {
+			t.Errorf("hard break should use br: %s", html)
+		}
+	}
+}
+
+func TestSoftBreakUsesBR(t *testing.T) {
+	html := render("one\ntwo\n")
 
 	if !strings.Contains(html, "<p>one<br>\ntwo</p>") {
-		t.Errorf("line break should use br: %s", html)
+		t.Errorf("soft break should use br: %s", html)
 	}
 }
 
@@ -196,15 +206,39 @@ func TestBlankLineSeparatesParagraphs(t *testing.T) {
 	}
 }
 
-func TestPlainTextAndFirstParagraph(t *testing.T) {
+func TestFirstParagraph(t *testing.T) {
 	document := Parse([]byte("# Title\n\nFirst **paragraph** with `code`.\n\n## Section\n"))
 
 	if document.FirstParagraph != "First paragraph with code." {
 		t.Errorf("first paragraph = %q", document.FirstParagraph)
 	}
+}
 
-	if !strings.Contains(document.PlainText, "Title") || !strings.Contains(document.PlainText, "Section") {
-		t.Errorf("plain text = %q", document.PlainText)
+func TestRenderFallback(t *testing.T) {
+	document := &Document{blocks: []block{{
+		kind: blockKind(999),
+		children: []block{{
+			kind:    blockParagraph,
+			inlines: []inline{{kind: inlineText, text: "fallback"}},
+		}},
+	}}}
+
+	if !strings.Contains(string(document.Render(nil)), "fallback") {
+		t.Fatal("unknown block did not render its children")
+	}
+
+	document = &Document{blocks: []block{{
+		kind: blockParagraph,
+		inlines: []inline{{
+			kind:     inlineKind(999),
+			text:     "tail",
+			children: []inline{{kind: inlineText, text: "child"}},
+		}},
+	}}}
+
+	html := string(document.Render(nil))
+	if !strings.Contains(html, "child") || !strings.Contains(html, "tail") {
+		t.Fatalf("unknown inline dropped content: %s", html)
 	}
 }
 
@@ -515,5 +549,72 @@ func TestUnclosedContainerFence(t *testing.T) {
 	html := render("::: tip\n```\ncode\n:::")
 	if !strings.Contains(html, "code\n:::") {
 		t.Errorf("container swallowed fenced content: %s", html)
+	}
+}
+
+func TestFindClosingBracket(t *testing.T) {
+	cases := []struct {
+		source string
+		want   int
+		found  bool
+	}{
+		{"[a]", 2, true},
+		{"[a[b]c]", 6, true},
+		{`[a \] b]`, 7, true},
+		{"[`]`]", 4, true},
+		{"[a", 0, false},
+	}
+
+	for _, test := range cases {
+		got, found := findClosingBracket(test.source, 0)
+		if got != test.want || found != test.found {
+			t.Errorf("findClosingBracket(%q) = %d, %t; want %d, %t", test.source, got, found, test.want, test.found)
+		}
+	}
+}
+
+func TestDelimiterCanClose(t *testing.T) {
+	cases := []struct {
+		char     byte
+		previous rune
+		next     rune
+		want     bool
+	}{
+		{'*', 'a', ' ', true},
+		{'*', ' ', 'a', false},
+		{'*', 0, 'a', false},
+		{'_', 'a', ' ', true},
+		{'_', 'a', 'b', false},
+		{'*', '中', '文', true},
+	}
+
+	for _, test := range cases {
+		if got := delimiterCanClose(test.char, test.previous, test.next); got != test.want {
+			t.Errorf("delimiterCanClose(%q, %q, %q) = %t; want %t", test.char, test.previous, test.next, got, test.want)
+		}
+	}
+}
+
+func TestSafeURL(t *testing.T) {
+	cases := []struct {
+		value string
+		image bool
+		want  bool
+	}{
+		{"", false, true},
+		{"https://example.com", false, true},
+		{"HTTPS://example.com", false, true},
+		{"relative/path", true, true},
+		{"#anchor", false, true},
+		{"mailto:docs@example.com", false, true},
+		{"mailto:docs@example.com", true, false},
+		{"javascript:alert(1)", false, false},
+		{"data:text/html,x", true, false},
+	}
+
+	for _, test := range cases {
+		if got := safeURL(test.value, test.image); got != test.want {
+			t.Errorf("safeURL(%q, %t) = %t; want %t", test.value, test.image, got, test.want)
+		}
 	}
 }

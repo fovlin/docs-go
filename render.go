@@ -12,12 +12,24 @@ import (
 )
 
 func (app *App) parsePage(page *Page) (*markdown.Document, error) {
+	info, statErr := os.Stat(page.AbsPath)
+	if statErr == nil {
+		if document, ok := app.Documents.lookup(page.AbsPath, info.ModTime().UnixNano(), info.Size()); ok {
+			return document, nil
+		}
+	}
+
 	data, err := os.ReadFile(page.AbsPath)
 	if err != nil {
 		return nil, fmt.Errorf("read %s: %w", page.SourcePath, err)
 	}
 
-	return parseMarkdown(data), nil
+	document := parseMarkdown(data)
+	if statErr == nil {
+		app.Documents.store(page.AbsPath, document, info.ModTime().UnixNano(), info.Size())
+	}
+
+	return document, nil
 }
 
 func (app *App) renderPageHTML(page *Page) ([]byte, error) {

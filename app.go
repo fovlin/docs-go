@@ -30,7 +30,7 @@ type App struct {
 	AssetVersion string
 	Bootstrap    string
 
-	Titles *TitleCache
+	Documents *DocumentCache
 
 	lookupMu    sync.Mutex
 	sourceCache map[string]string
@@ -69,7 +69,7 @@ func LoadApp(projectRoot, configFile, srcFlag, outFlag string) (*App, error) {
 		OutDir:      resolveConfigPath(absoluteRoot, loaded.OutDir),
 		PublicDir:   resolveConfigPath(absoluteRoot, loaded.PublicDir),
 		SidebarPath: resolveConfigPath(absoluteRoot, loaded.SidebarFile),
-		Titles:      newTitleCache(),
+		Documents:   newDocumentCache(),
 		sourceCache: make(map[string]string),
 		assetCache:  make(map[string]bool),
 	}

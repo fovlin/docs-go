@@ -180,7 +180,7 @@ func TestPageHeadingAndDisplayTitle(t *testing.T) {
 	}
 }
 
-func TestTitleCacheInvalidatesOnChange(t *testing.T) {
+func TestDocumentCacheInvalidatesOnChange(t *testing.T) {
 	root := t.TempDir()
 	writeTestProject(t, root)
 	app := loadTestProject(t, root)
@@ -193,8 +193,40 @@ func TestTitleCacheInvalidatesOnChange(t *testing.T) {
 	writeFile(t, filepath.Join(root, "docs", "guide", "start.md"), "# Changed\n\nNew body.\n")
 
 	changed := mustPage(t, app, "/guide/start")
+	document, err := app.parsePage(changed)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if document.FirstH1 != "Changed" {
+		t.Fatalf("cached document after edit = %q", document.FirstH1)
+	}
+
 	if title := app.titleFor(changed); title != "Changed" {
 		t.Fatalf("cached title after edit = %q", title)
+	}
+}
+
+func TestDocumentCacheSharedByTitleAndRender(t *testing.T) {
+	root := t.TempDir()
+	writeTestProject(t, root)
+	app := loadTestProject(t, root)
+
+	page := mustPage(t, app, "/guide/start")
+	if title := app.titleFor(page); title != "Start" {
+		t.Fatalf("title = %q", title)
+	}
+
+	first, err := app.parsePage(page)
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := app.parsePage(page)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if first != second {
+		t.Fatal("parsePage did not reuse the document cached by titleFor")
 	}
 }
 

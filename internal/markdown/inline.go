@@ -30,10 +30,6 @@ type inline struct {
 }
 
 func parseInline(value string) []inline {
-	return parseInlineSegment(value)
-}
-
-func parseInlineSegment(value string) []inline {
 	items := make([]inline, 0, 8)
 
 	for i := 0; i < len(value); {
@@ -188,14 +184,14 @@ func parseDelimiter(value string, start int) (inline, int, bool) {
 
 	if count >= 2 {
 		if end, ok := findClosingDelimiter(value, start+2, char, 2); ok {
-			inner := parseInlineSegment(value[start+2 : end])
+			inner := parseInline(value[start+2 : end])
 
 			return inline{kind: inlineStrong, children: inner}, end + 2, true
 		}
 	}
 
 	if end, ok := findClosingDelimiter(value, start+count, char, 1); ok {
-		inner := parseInlineSegment(value[start+1 : end])
+		inner := parseInline(value[start+1 : end])
 
 		return inline{kind: inlineEmphasis, children: inner}, end + 1, true
 	}
@@ -269,7 +265,7 @@ func parseLink(value string, start int) (inline, int, bool) {
 		return inline{}, start, false
 	}
 
-	children := parseInlineSegment(value[bracket+1 : close])
+	children := parseInline(value[bracket+1 : close])
 	kind := inlineLink
 	if image {
 		kind = inlineImage
