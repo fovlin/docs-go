@@ -21,7 +21,6 @@ type SidebarItem struct {
 // SidebarConfig accepts either one array for every page or an object keyed by
 // URL prefix.
 type SidebarConfig struct {
-	Global   []SidebarItem
 	Sections map[string][]SidebarItem
 	keys     []string
 	file     string
@@ -61,33 +60,37 @@ func loadSidebar(file string, base string) (*SidebarConfig, error) {
 		return config, nil
 	}
 
+	raw := make(map[string][]SidebarItem)
 	switch trimmed[0] {
 	case '[':
-		if err := json.Unmarshal(trimmed, &config.Global); err != nil {
+		var items []SidebarItem
+		if err := json.Unmarshal(trimmed, &items); err != nil {
 			return nil, fmt.Errorf("parse sidebar %s: %w", file, err)
 		}
+		raw["/"] = items
+
 	case '{':
-		raw := make(map[string][]SidebarItem)
 		if err := json.Unmarshal(trimmed, &raw); err != nil {
 			return nil, fmt.Errorf("parse sidebar %s: %w", file, err)
 		}
-		for key, items := range raw {
-			prefix := normalizeSidebarPrefix(key, base)
-			if _, exists := config.Sections[prefix]; exists {
-				return nil, fmt.Errorf("sidebar prefix %s is defined more than once", prefix)
-			}
-			config.Sections[prefix] = items
-			config.keys = append(config.keys, prefix)
-		}
-		sort.Slice(config.keys, func(i, j int) bool {
-			if len(config.keys[i]) != len(config.keys[j]) {
-				return len(config.keys[i]) > len(config.keys[j])
-			}
-			return config.keys[i] < config.keys[j]
-		})
 	default:
 		return nil, fmt.Errorf("parse sidebar %s: expected an array or an object", file)
 	}
+
+	for key, items := range raw {
+		prefix := normalizeSidebarPrefix(key, base)
+		if _, exists := config.Sections[prefix]; exists {
+			return nil, fmt.Errorf("sidebar prefix %s is defined more than once", prefix)
+		}
+		config.Sections[prefix] = items
+		config.keys = append(config.keys, prefix)
+	}
+	sort.Slice(config.keys, func(i, j int) bool {
+		if len(config.keys[i]) != len(config.keys[j]) {
+			return len(config.keys[i]) > len(config.keys[j])
+		}
+		return config.keys[i] < config.keys[j]
+	})
 
 	return config, nil
 }

@@ -97,11 +97,6 @@ func (app *App) resolveSidebarTrees() map[string][]*SidebarNode {
 		return trees
 	}
 
-	if app.Sidebar.Global != nil {
-		trees["/"] = app.resolveSidebarItems(app.Sidebar.Global)
-		return trees
-	}
-
 	for _, key := range app.Sidebar.keys {
 		trees[key] = app.resolveSidebarItems(app.Sidebar.Sections[key])
 	}
@@ -150,12 +145,7 @@ func (app *App) sidebarFor(pageURL string) []*SidebarNode {
 		return nil
 	}
 
-	var nodes []*SidebarNode
-	if app.Sidebar.Global != nil {
-		nodes = app.SidebarTrees["/"]
-	} else {
-		nodes = app.matchedSidebar(pageURL)
-	}
+	nodes := app.matchedSidebar(pageURL)
 
 	return app.markSidebar(nodes, pageURL)
 }
