@@ -75,6 +75,9 @@ func (app *App) writePages() (int, error) {
 	seenOut := make(map[string]string)
 
 	err := app.walkPages(func(page *Page) error {
+		if strings.EqualFold(page.OutPath, "404.html") {
+			return fmt.Errorf("page %s maps to reserved output 404.html", page.SourcePath)
+		}
 		key := strings.ToLower(page.URL)
 		if existing, ok := seenURL[key]; ok {
 			return fmt.Errorf("pages %s and %s both map to %s", existing, page.SourcePath, page.URL)
@@ -258,9 +261,21 @@ func (app *App) writeOutputFile(relative string, data []byte) error {
 }
 
 func (app *App) copyTree(source string, destination string, skipMarkdown bool) error {
+	rootInfo, err := os.Lstat(source)
+	if err != nil {
+		return err
+	}
+	if rootInfo.Mode()&os.ModeSymlink != 0 {
+		return fmt.Errorf("%s is a symlink", source)
+	}
+
 	return filepath.WalkDir(source, func(current string, entry fs.DirEntry, err error) error {
 		if err != nil {
 			return err
+		}
+
+		if entry.Type()&fs.ModeSymlink != 0 {
+			return fmt.Errorf("%s is a symlink", current)
 		}
 
 		relative, err := filepath.Rel(source, current)

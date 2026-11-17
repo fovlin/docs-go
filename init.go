@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-func runInit(root string, force bool) error {
+func runInit(root string, force bool, configName string) error {
 	if info, err := os.Stat(root); err == nil && !info.IsDir() {
 		return fmt.Errorf("not a directory: %s", root)
 	}
@@ -16,9 +16,15 @@ func runInit(root string, force bool) error {
 		return fmt.Errorf("create project: %w", err)
 	}
 
-	configFile := filepath.Join(root, defaultConfigFile)
-	if _, err := os.Stat(configFile); err == nil && !force {
-		return fmt.Errorf("%s already exists; use --force", configFile)
+	if configName == "" {
+		configName = defaultConfigFile
+	}
+	configTarget := configName
+	if !filepath.IsAbs(configTarget) {
+		configTarget = filepath.Join(root, configTarget)
+	}
+	if _, err := os.Stat(configTarget); err == nil && !force {
+		return fmt.Errorf("%s already exists; use --force", configTarget)
 	}
 
 	var created, kept []string
@@ -30,7 +36,13 @@ func runInit(root string, force bool) error {
 
 		relative := strings.TrimPrefix(current, "scaffold/")
 		target := filepath.Join(root, filepath.FromSlash(relative))
-		if _, err := os.Stat(target); err == nil && !force {
+		if relative == defaultConfigFile {
+			target = configTarget
+		}
+		if info, err := os.Stat(target); err == nil && !force {
+			if info.IsDir() {
+				return fmt.Errorf("scaffold target %s is a directory", target)
+			}
 			kept = append(kept, relative)
 			return nil
 		}
@@ -60,13 +72,15 @@ func runInit(root string, force bool) error {
 
 	display := displayPath(root)
 	logInfo("initialized %s", display)
-	for _, name := range created {
-		logPlain("  create  %s\n", name)
+	if !logQuiet {
+		for _, name := range created {
+			logPlain("  create  %s\n", name)
+		}
+		for _, name := range kept {
+			logPlain("  keep    %s\n", name)
+		}
+		logPlain("\nnext:\n  cd %s\n  docs-go dev\n", display)
 	}
-	for _, name := range kept {
-		logPlain("  keep    %s\n", name)
-	}
-	logPlain("\nnext:\n  cd %s\n  docs-go dev\n", display)
 
 	return nil
 }

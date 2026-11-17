@@ -29,7 +29,6 @@ type blockSpec struct {
 	headingLevel int
 	headingText  string
 
-	marker    listMarker
 	listItems []listItemSpec
 
 	containerKind  string
@@ -104,9 +103,8 @@ func scanBlock(lines []string, start int) blockSpec {
 		return spec
 	}
 
-	if marker, ok := parseListMarker(line); ok {
+	if _, ok := parseListMarker(line); ok {
 		spec.kind = blockList
-		spec.marker = marker
 		spec.end, spec.listItems = scanListEnd(lines, start)
 		return spec
 	}
@@ -115,10 +113,11 @@ func scanBlock(lines []string, start int) blockSpec {
 		spec.kind = blockContainer
 		spec.containerKind = kind
 		spec.containerTitle = title
-		spec.end = scanContainerEnd(lines, start)
+		var closed bool
+		spec.end, closed = scanContainerEnd(lines, start)
 		spec.contentStart = start + 1
 		spec.contentEnd = spec.end
-		if spec.contentEnd > spec.contentStart && isContainerClose(lines[spec.contentEnd-1]) {
+		if closed {
 			spec.contentEnd--
 		}
 		return spec
@@ -236,9 +235,9 @@ func scanTableEnd(lines []string, start int) int {
 	return i
 }
 
-func scanContainerEnd(lines []string, start int) int {
-	_, next := collectContainer(lines, start)
-	return next
+func scanContainerEnd(lines []string, start int) (int, bool) {
+	_, next, closed := collectContainer(lines, start)
+	return next, closed
 }
 
 func scanParagraphEnd(lines []string, start int) int {

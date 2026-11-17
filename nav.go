@@ -181,6 +181,8 @@ func (app *App) markSidebar(nodes []*SidebarNode, pageURL string) []*SidebarNode
 		if clone.Text == "" {
 			if clone.Path != "" {
 				clone.Text = app.pageTitle(clone.Path)
+			} else if clone.External {
+				clone.Text = clone.Href
 			} else if len(clone.Items) > 0 {
 				clone.Text = clone.Items[0].Text
 				if clone.Text == "" {

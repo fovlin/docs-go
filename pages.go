@@ -11,25 +11,36 @@ import (
 func (app *App) findPageByURL(target string) *Page {
 	target = canonicalURL(target)
 	trailing := strings.HasSuffix(target, "/")
-	relative := strings.TrimSuffix(strings.TrimPrefix(target, "/"), ".html")
+	relative := strings.TrimPrefix(target, "/")
+	relative = strings.TrimSuffix(relative, ".html")
 	relative = strings.TrimSuffix(relative, "/")
 
 	if relative == "" || relative == "index" {
-		return app.findSource([]string{"index.md", "index.markdown"})
+		return app.findSource(markdownCandidates("index"))
 	}
 
-	candidates := make([]string, 0, 4)
+	candidates := make([]string, 0, 8)
+	if strings.HasSuffix(target, ".html") {
+		candidates = append(candidates, markdownCandidates(strings.TrimPrefix(target, "/"))...)
+	}
 	if trailing {
-		candidates = append(candidates, relative+"/index.md", relative+"/index.markdown")
+		candidates = append(candidates, markdownCandidates(relative+"/index")...)
 	}
-
-	candidates = append(candidates, relative+".md", relative+".markdown")
-
+	candidates = append(candidates, markdownCandidates(relative)...)
 	if !trailing {
-		candidates = append(candidates, relative+"/index.md", relative+"/index.markdown")
+		candidates = append(candidates, markdownCandidates(relative+"/index")...)
 	}
 
 	return app.findSource(candidates)
+}
+
+func markdownCandidates(base string) []string {
+	return []string{
+		base + ".md",
+		base + ".markdown",
+		base + ".MD",
+		base + ".Markdown",
+	}
 }
 
 // Find a page by Source path, like path of end with `.md“, return a page meta data
@@ -49,15 +60,9 @@ func (app *App) findPageBySource(relative string) *Page {
 		relative = strings.TrimSuffix(relative, "/") + "/index"
 	}
 
-	candidates := []string{
-		relative + ".md",
-		relative + ".markdown",
-	}
+	candidates := markdownCandidates(relative)
 	if !trailing {
-		candidates = append(candidates,
-			relative+"/index.md",
-			relative+"/index.markdown",
-		)
+		candidates = append(candidates, markdownCandidates(relative+"/index")...)
 	}
 
 	return app.findSource(candidates)

@@ -131,6 +131,23 @@ func TestBlankLineContinuesList(t *testing.T) {
 	}
 }
 
+func TestEmptyListMarkerDoesNotPanic(t *testing.T) {
+	for _, source := range []string{"-\n", "*\n", "+\n"} {
+		html := render(source)
+		if strings.Contains(html, "<ul>") {
+			t.Errorf("%q should not become a list: %s", source, html)
+		}
+	}
+}
+
+func TestListMarkerPreservesCodeIndent(t *testing.T) {
+	html := render("-     code\n")
+
+	if !strings.Contains(html, "<li><div class=\"code-block\"><pre><code>code") {
+		t.Errorf("list item code block missing: %s", html)
+	}
+}
+
 func TestNestedList(t *testing.T) {
 	html := render("- parent\n  - child\n")
 
@@ -447,5 +464,56 @@ func TestTableAfterListAndQuote(t *testing.T) {
 	quote := render("> quote\n| a | b |\n| --- | --- |\n")
 	if !strings.Contains(quote, "</blockquote>\n<table>") {
 		t.Errorf("table did not end the blockquote: %s", quote)
+	}
+}
+
+func TestTableWithoutLeadingPipe(t *testing.T) {
+	html := render("a | b\n--- | ---\n1 | 2\n")
+	for _, want := range []string{"<th>a</th>", "<th>b</th>", "<td>1</td>", "<td>2</td>"} {
+		if !strings.Contains(html, want) {
+			t.Errorf("missing %q in %s", want, html)
+		}
+	}
+}
+
+func TestTableBodyStartsDash(t *testing.T) {
+	html := render("| a | b |\n| --- | --- |\n-1 | 2\n")
+	if !strings.Contains(html, "<td>-1</td>") {
+		t.Errorf("negative body row missing: %s", html)
+	}
+}
+
+func TestTableStopsAtBlockquote(t *testing.T) {
+	html := render("| a | b |\n| --- | --- |\n> q | x\n")
+	if !strings.Contains(html, "</table>") || !strings.Contains(html, "<blockquote>") {
+		t.Errorf("table did not stop before quote: %s", html)
+	}
+}
+
+func TestTableCellEscapes(t *testing.T) {
+	html := render("| a \\*b\\* | c |\n| --- | --- |\n")
+	if !strings.Contains(html, "<th>a *b*</th>") {
+		t.Errorf("cell escape lost: %s", html)
+	}
+}
+
+func TestUnclosedFenceNoExtraBlank(t *testing.T) {
+	html := render("```\nx\n")
+	if !strings.Contains(html, "<code>x\n</code>") || strings.Contains(html, "<code>x\n\n</code>") {
+		t.Errorf("unclosed fence has extra blank: %s", html)
+	}
+}
+
+func TestBlockquoteTab(t *testing.T) {
+	html := render(">\tcode\n")
+	if !strings.Contains(html, "<p>code</p>") || strings.Contains(html, "code-block") {
+		t.Errorf("tab after quote was treated as code indentation: %s", html)
+	}
+}
+
+func TestUnclosedContainerFence(t *testing.T) {
+	html := render("::: tip\n```\ncode\n:::")
+	if !strings.Contains(html, "code\n:::") {
+		t.Errorf("container swallowed fenced content: %s", html)
 	}
 }

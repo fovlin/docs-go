@@ -114,7 +114,7 @@ func (app *App) editURL(page *Page) string {
 	}
 
 	result := strings.ReplaceAll(app.EditLink, ":path", page.SourcePath)
-	result = strings.ReplaceAll(result, ":url", strings.TrimPrefix(app.href(page.URL), app.Base))
+	result = strings.ReplaceAll(result, ":url", page.URL)
 
 	return result
 }

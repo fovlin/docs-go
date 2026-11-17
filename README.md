@@ -2,7 +2,6 @@
 
 > A small, plain static documentation generator in Go, in the spirit of
 
-
 [next-index](https://github.com/fovlin/next-index) and VitePress.
 
 - **One binary.** No Node.js, no bundler, no plugin graph. The only external
@@ -21,11 +20,12 @@
 Requires Go 1.27.2 or newer.
 
 ```bash
-go install acovia.net/docs-go@latest
-
-docs-go init my-docs
+git clone https://github.com/fovlin/docs-go
+cd docs-go
+go build -o docs-go .
+./docs-go init my-docs
 cd my-docs
-docs-go dev
+../docs-go dev
 ```
 
 Open <http://localhost:7280/>. Refresh the browser after editing a file under

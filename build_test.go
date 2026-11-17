@@ -308,3 +308,44 @@ func TestBrandOmitsImageWithoutLogo(t *testing.T) {
 		t.Fatalf("brand did not render the configured logo: %s", html)
 	}
 }
+
+func TestBuildRejectsReserved404Output(t *testing.T) {
+	root := t.TempDir()
+	writeTestProject(t, root)
+	writeFile(t, filepath.Join(root, "docs", "404.md"), "# Custom 404\n")
+
+	app := loadTestProject(t, root)
+	err := runBuild(app)
+	if err == nil || !strings.Contains(err.Error(), "reserved output 404.html") {
+		t.Fatalf("expected reserved output error, got %v", err)
+	}
+}
+
+func TestSidebarRejectsNormalizedDuplicatePrefixes(t *testing.T) {
+	root := t.TempDir()
+	writeTestProject(t, root)
+	writeFile(t, filepath.Join(root, "sidebar.json"), `{
+		"/guide/": [{ "text": "A", "link": "/guide/start" }],
+		"/guide":  [{ "text": "B", "link": "/guide/next" }]
+	}`)
+
+	_, err := LoadApp(root, "docs.json", "", "")
+	if err == nil || !strings.Contains(err.Error(), "defined more than once") {
+		t.Fatalf("expected duplicate sidebar error, got %v", err)
+	}
+}
+
+func TestFindPageByURLCaseAndHTMLSuffix(t *testing.T) {
+	root := t.TempDir()
+	writeTestProject(t, root)
+	writeFile(t, filepath.Join(root, "docs", "upper.MD"), "# Upper\n")
+	writeFile(t, filepath.Join(root, "docs", "html-api.html.md"), "# API\n")
+
+	app := loadTestProject(t, root)
+	if page := app.findPageByURL("/upper"); page == nil || page.SourcePath != "upper.MD" {
+		t.Fatalf("case-insensitive page = %+v", page)
+	}
+	if page := app.findPageByURL("/html-api.html"); page == nil || page.SourcePath != "html-api.html.md" {
+		t.Fatalf("html-suffix page = %+v", page)
+	}
+}

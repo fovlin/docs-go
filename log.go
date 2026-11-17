@@ -17,10 +17,6 @@ func logInfo(format string, value ...any) {
 }
 
 func logWarn(format string, value ...any) {
-	if logQuiet {
-		return
-	}
-
 	record.Warn(fmt.Sprintf(format, value...))
 }
 

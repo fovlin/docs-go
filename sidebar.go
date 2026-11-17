@@ -73,6 +73,9 @@ func loadSidebar(file string, base string) (*SidebarConfig, error) {
 		}
 		for key, items := range raw {
 			prefix := normalizeSidebarPrefix(key, base)
+			if _, exists := config.Sections[prefix]; exists {
+				return nil, fmt.Errorf("sidebar prefix %s is defined more than once", prefix)
+			}
 			config.Sections[prefix] = items
 			config.keys = append(config.keys, prefix)
 		}

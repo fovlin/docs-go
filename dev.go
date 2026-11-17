@@ -32,6 +32,7 @@ type Dev struct {
 type devStamps struct {
 	config  string
 	sidebar string
+	src     string
 }
 
 func runDev(app *App, addr string, port int) error {
@@ -49,6 +50,7 @@ func newDev(app *App, configFile, srcFlag, outFlag string) *Dev {
 	dev.stamps.Store(&devStamps{
 		config:  fileStamp(app.ConfigPath),
 		sidebar: fileStamp(app.SidebarPath),
+		src:     fileStamp(app.SrcDir),
 	})
 
 	return dev
@@ -88,7 +90,8 @@ func (dev *Dev) snapshot() *App {
 	stamps := dev.stamps.Load()
 	configStamp := fileStamp(app.ConfigPath)
 	sidebarStamp := fileStamp(app.SidebarPath)
-	if stamps != nil && configStamp == stamps.config && sidebarStamp == stamps.sidebar {
+	srcStamp := fileStamp(app.SrcDir)
+	if stamps != nil && configStamp == stamps.config && sidebarStamp == stamps.sidebar && srcStamp == stamps.src {
 		return app
 	}
 
@@ -103,7 +106,8 @@ func (dev *Dev) snapshot() *App {
 	stamps = dev.stamps.Load()
 	configStamp = fileStamp(app.ConfigPath)
 	sidebarStamp = fileStamp(app.SidebarPath)
-	if stamps != nil && configStamp == stamps.config && sidebarStamp == stamps.sidebar {
+	srcStamp = fileStamp(app.SrcDir)
+	if stamps != nil && configStamp == stamps.config && sidebarStamp == stamps.sidebar && srcStamp == stamps.src {
 		return app
 	}
 
@@ -112,7 +116,7 @@ func (dev *Dev) snapshot() *App {
 		logWarn("reload: %v", err)
 		// Remember the failed stamps so an unchanged broken config is not
 		// retried on every request; any later edit triggers a reload again.
-		dev.stamps.Store(&devStamps{config: configStamp, sidebar: sidebarStamp})
+		dev.stamps.Store(&devStamps{config: configStamp, sidebar: sidebarStamp, src: srcStamp})
 		return app
 	}
 
@@ -120,6 +124,7 @@ func (dev *Dev) snapshot() *App {
 	dev.stamps.Store(&devStamps{
 		config:  fileStamp(reloaded.ConfigPath),
 		sidebar: fileStamp(reloaded.SidebarPath),
+		src:     fileStamp(reloaded.SrcDir),
 	})
 
 	return reloaded
@@ -127,7 +132,11 @@ func (dev *Dev) snapshot() *App {
 
 func (app *App) serveDev(w http.ResponseWriter, r *http.Request) {
 	if app.Base != "/" && r.URL.Path == strings.TrimSuffix(app.Base, "/") {
-		http.Redirect(w, r, app.Base, http.StatusMovedPermanently)
+		target := app.Base
+		if r.URL.RawQuery != "" {
+			target += "?" + r.URL.RawQuery
+		}
+		http.Redirect(w, r, target, http.StatusMovedPermanently)
 		return
 	}
 
@@ -138,6 +147,10 @@ func (app *App) serveDev(w http.ResponseWriter, r *http.Request) {
 	}
 	if !strings.HasPrefix(sitePath, "/") {
 		sitePath = "/" + sitePath
+	}
+
+	if app.servePublicAsset(w, r, sitePath) {
+		return
 	}
 
 	switch {
@@ -177,11 +190,14 @@ func (app *App) serveDev(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if app.serveAsset(w, r, sitePath) {
+	if app.serveSourceAsset(w, r, sitePath) {
 		return
 	}
 
 	document := app.renderLayout(app.notFoundPage())
+	if data, ok := readAsset(app.PublicDir, "404.html", false); ok {
+		document = data
+	}
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.Header().Set("Cache-Control", "no-cache")
 	w.WriteHeader(http.StatusNotFound)
@@ -214,32 +230,64 @@ func serveThemeAsset(w http.ResponseWriter, r *http.Request, name string) {
 	serveBytes(w, r, name, data)
 }
 
-func (app *App) serveAsset(w http.ResponseWriter, r *http.Request, sitePath string) bool {
+func (app *App) servePublicAsset(w http.ResponseWriter, r *http.Request, sitePath string) bool {
+	return serveAssetFrom(w, r, sitePath, app.PublicDir, false)
+}
+
+func (app *App) serveSourceAsset(w http.ResponseWriter, r *http.Request, sitePath string) bool {
+	return serveAssetFrom(w, r, sitePath, app.SrcDir, true)
+}
+
+func serveAssetFrom(w http.ResponseWriter, r *http.Request, sitePath, directory string, source bool) bool {
 	relative := strings.TrimPrefix(sitePath, "/")
 	if relative == "" {
 		return false
 	}
 
-	for _, directory := range []string{app.SrcDir, app.PublicDir} {
-		target := filepath.Join(directory, filepath.FromSlash(relative))
-		if !isInside(directory, target) {
-			continue
-		}
-
-		info, err := os.Stat(target)
-		if err != nil || info.IsDir() {
-			continue
-		}
-
-		data, err := os.ReadFile(target)
-		if err != nil {
-			continue
-		}
-
-		serveBytes(w, r, relative, data)
-		return true
+	data, ok := readAsset(directory, relative, source)
+	if !ok {
+		return false
 	}
 
+	serveBytes(w, r, relative, data)
+	return true
+}
+
+func readAsset(directory, relative string, source bool) ([]byte, bool) {
+	if source && (isMarkdownFile(relative) || hasHiddenSegment(relative)) {
+		return nil, false
+	}
+
+	root, err := filepath.EvalSymlinks(directory)
+	if err != nil {
+		return nil, false
+	}
+
+	target := filepath.Join(root, filepath.FromSlash(relative))
+	resolved, err := filepath.EvalSymlinks(target)
+	if err != nil || !isInside(root, resolved) {
+		return nil, false
+	}
+
+	info, err := os.Stat(resolved)
+	if err != nil || info.IsDir() {
+		return nil, false
+	}
+
+	data, err := os.ReadFile(resolved)
+	if err != nil {
+		return nil, false
+	}
+
+	return data, true
+}
+
+func hasHiddenSegment(relative string) bool {
+	for _, segment := range strings.Split(filepath.ToSlash(relative), "/") {
+		if strings.HasPrefix(segment, ".") {
+			return true
+		}
+	}
 	return false
 }
 

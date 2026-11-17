@@ -403,7 +403,7 @@ func parseLinkTarget(value string, start int) (string, string, int, bool) {
 		return "", "", start, false
 	}
 
-	return destination, title, index + 1, true
+	return html.UnescapeString(destination), html.UnescapeString(title), index + 1, true
 }
 
 func parseEntity(value string, start int) (string, int, bool) {

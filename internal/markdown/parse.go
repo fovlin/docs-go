@@ -105,28 +105,20 @@ func (p *parser) parseBlocks(lines []string) []block {
 	blocks := make([]block, 0, len(specs))
 
 	for _, spec := range specs {
-		start := spec.start
-		for start < spec.end {
-			b, next := p.parseBlock(lines, spec, start)
-			if next <= start || next > spec.end {
-				next = spec.end
-			}
-			blocks = append(blocks, b)
-			start = next
-		}
+		blocks = append(blocks, p.parseBlock(lines, spec))
 	}
 
 	return blocks
 }
 
-func (p *parser) parseBlock(lines []string, spec blockSpec, start int) (block, int) {
+func (p *parser) parseBlock(lines []string, spec blockSpec) block {
 	switch spec.kind {
 	case blockCode:
 		if spec.fenced {
-			code, language := parseFenceRange(lines, start, spec.end, spec.fenceChar, spec.fenceLength, spec.fenceInfo)
-			return block{kind: blockCode, text: code, language: language}, spec.end
+			code, language := parseFenceRange(lines, spec.start, spec.end, spec.fenceChar, spec.fenceLength, spec.fenceInfo)
+			return block{kind: blockCode, text: code, language: language}
 		}
-		return block{kind: blockCode, text: parseIndentedCodeRange(lines, start, spec.end)}, spec.end
+		return block{kind: blockCode, text: parseIndentedCodeRange(lines, spec.start, spec.end)}
 
 	case blockHeading:
 		inlines := parseInline(spec.headingText)
@@ -138,20 +130,20 @@ func (p *parser) parseBlock(lines []string, spec blockSpec, start int) (block, i
 			p.firstH1 = headingText
 		}
 
-		return block{kind: blockHeading, level: spec.headingLevel, id: id, inlines: inlines}, start + 1
+		return block{kind: blockHeading, level: spec.headingLevel, id: id, inlines: inlines}
 
 	case blockThematicBreak:
-		return block{kind: blockThematicBreak}, start + 1
+		return block{kind: blockThematicBreak}
 
 	case blockBlockquote:
-		inner := make([]string, 0, spec.end-start)
-		for j := start; j < spec.end; j++ {
+		inner := make([]string, 0, spec.end-spec.start)
+		for j := spec.start; j < spec.end; j++ {
 			inner = append(inner, stripBlockquote(lines[j]))
 		}
-		return block{kind: blockBlockquote, children: p.parseBlocks(trimTrailingBlank(inner))}, spec.end
+		return block{kind: blockBlockquote, children: p.parseBlocks(trimTrailingBlank(inner))}
 
 	case blockList:
-		return p.parseListRange(lines, start, spec.end, spec.listItems)
+		return p.parseListRange(lines, spec.end, spec.listItems)
 
 	case blockContainer:
 		return block{
@@ -159,16 +151,16 @@ func (p *parser) parseBlock(lines []string, spec blockSpec, start int) (block, i
 			containerKind:  spec.containerKind,
 			containerTitle: spec.containerTitle,
 			children:       p.parseBlocks(trimTrailingBlank(lines[spec.contentStart:spec.contentEnd])),
-		}, spec.end
+		}
 
 	case blockTable:
-		return parseTableSpec(spec), spec.end
+		return parseTableSpec(spec)
 	}
 
 	return block{
 		kind:    blockParagraph,
-		inlines: parseInline(strings.Join(lines[start:spec.end], "\n")),
-	}, spec.end
+		inlines: parseInline(strings.Join(lines[spec.start:spec.end], "\n")),
+	}
 }
 
 func parseFenceRange(lines []string, start, end int, char byte, length int, info string) (string, string) {
@@ -179,6 +171,8 @@ func parseFenceRange(lines []string, start, end int, char byte, length int, info
 
 	contentEnd := end
 	if contentEnd > start+1 && fenceClose(lines[contentEnd-1], char, length) {
+		contentEnd--
+	} else if contentEnd == len(lines) && contentEnd > start+1 && lines[contentEnd-1] == "" {
 		contentEnd--
 	}
 
@@ -214,7 +208,7 @@ func parseIndentedCodeRange(lines []string, start, end int) string {
 	return code
 }
 
-func (p *parser) parseListRange(lines []string, start, end int, items []listItemSpec) (block, int) {
+func (p *parser) parseListRange(lines []string, end int, items []listItemSpec) block {
 	first := items[0].marker
 	list := block{
 		kind:    blockList,
@@ -237,7 +231,7 @@ func (p *parser) parseListRange(lines []string, start, end int, items []listItem
 		})
 	}
 
-	return list, end
+	return list
 }
 
 func parseTableSpec(spec blockSpec) block {
@@ -395,16 +389,18 @@ func parseListMarker(line string) (listMarker, bool) {
 	switch line[index] {
 	case '-', '*', '+':
 		next := index + 1
-		if next+1 < len(line) && line[next] != ' ' && line[next] != '\t' {
+		if next < len(line) && line[next] != ' ' && line[next] != '\t' {
 			return listMarker{}, false
 		}
-
-		content := line[next+1:]
+		next++
+		if next >= len(line) {
+			return listMarker{}, false
+		}
 
 		return listMarker{
 			marker:  line[index],
 			indent:  indent,
-			content: content,
+			content: line[next:],
 		}, true
 	}
 
@@ -570,7 +566,7 @@ func stripBlockquote(line string) string {
 	}
 
 	index++
-	if index < len(line) && line[index] == ' ' {
+	if index < len(line) && (line[index] == ' ' || line[index] == '\t') {
 		index++
 	}
 
@@ -611,7 +607,7 @@ func isContainerClose(line string) bool {
 	return indentWidth(line) <= 3 && strings.TrimSpace(line) == ":::"
 }
 
-func collectContainer(lines []string, start int) ([]string, int) {
+func collectContainer(lines []string, start int) ([]string, int, bool) {
 	inner := make([]string, 0, 16)
 	depth := 1
 	var fenceChar byte
@@ -641,7 +637,7 @@ func collectContainer(lines []string, start int) ([]string, int) {
 		if indentWidth(line) <= 3 && strings.TrimSpace(line) == ":::" {
 			depth--
 			if depth == 0 {
-				return trimTrailingBlank(inner), i + 1
+				return trimTrailingBlank(inner), i + 1, true
 			}
 
 			inner = append(inner, line)
@@ -657,14 +653,10 @@ func collectContainer(lines []string, start int) ([]string, int) {
 		i++
 	}
 
-	return trimTrailingBlank(inner), i
+	return trimTrailingBlank(inner), i, false
 }
 
 func tableDelimiter(line string) ([]string, bool) {
-	if !isTableRaw(line) {
-		return nil, false
-	}
-
 	cells := splitTableRow(line)
 	if len(cells) == 0 {
 		return nil, false
@@ -710,7 +702,23 @@ func isTableStart(lines []string, index int) bool {
 }
 
 func isTableRaw(line string) bool {
-	return strings.ContainsRune(line, '|') && !strings.ContainsAny(strings.TrimSpace(line[:1]), "-+*#")
+	if !strings.ContainsRune(line, '|') {
+		return false
+	}
+
+	trimmed := strings.TrimSpace(line)
+	if trimmed == "" {
+		return false
+	}
+
+	switch trimmed[0] {
+	case '#', '>', '+', '*':
+		return false
+	case '-':
+		return len(trimmed) == 1 || (trimmed[1] != ' ' && trimmed[1] != '\t')
+	}
+
+	return true
 }
 
 func splitTableRow(line string) []string {
@@ -724,8 +732,13 @@ func splitTableRow(line string) []string {
 		value := line[index]
 
 		if value == '\\' && index+1 < len(line) {
+			if line[index+1] == '|' {
+				builder.WriteByte('|')
+			} else {
+				builder.WriteByte('\\')
+				builder.WriteByte(line[index+1])
+			}
 			index++
-			builder.WriteByte(line[index])
 			continue
 		}
 
