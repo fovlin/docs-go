@@ -762,18 +762,6 @@ func splitTableRow(line string) []string {
 	return cells
 }
 
-func skipBlank(lines []string, i int) (int, bool) {
-	for i < len(lines) {
-		if strings.TrimSpace(lines[i]) == "" {
-			i++
-			continue
-		}
-		break
-	}
-
-	return i, i >= len(lines)
-}
-
 // blockIndent returns the leading-space width of a block marker, capped at 4.
 // Callers use it to reject indentation beyond three spaces; it is not a
 // general-purpose indentation counter.
