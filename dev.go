@@ -40,6 +40,7 @@ func runDev(app *App, addr string, port int) error {
 
 func newDev(app *App, configFile, srcFlag, outFlag string) *Dev {
 	dev := &Dev{
+		root:       app.Root,
 		configFile: configFile,
 		srcFlag:    srcFlag,
 		outFlag:    outFlag,

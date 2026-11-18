@@ -21,7 +21,6 @@ func writeFile(t *testing.T, name string, content string) {
 
 func loadTestProject(t *testing.T, root string) *App {
 	t.Helper()
-	t.Chdir(root)
 
 	app, err := LoadApp(root, "config/docs.json", "", "")
 	if err != nil {
@@ -333,7 +332,6 @@ func TestSidebarRejectsNormalizedDuplicatePrefixes(t *testing.T) {
 		"/guide":  [{ "text": "B", "link": "/guide/next" }]
 	}`)
 
-	t.Chdir(root)
 	_, err := LoadApp(root, "config/docs.json", "", "")
 	if err == nil || !strings.Contains(err.Error(), "defined more than once") {
 		t.Fatalf("expected duplicate sidebar error, got %v", err)

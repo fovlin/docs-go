@@ -51,9 +51,8 @@ func LoadApp(projectRoot, configFile, srcFlag, outFlag string) (*App, error) {
 	}
 
 	for _, dir := range []*string{&app.SrcDir, &app.OutDir, &app.PublicDir, &app.SidebarPath} {
-		*dir, err = filepath.Abs(*dir)
-		if err != nil {
-			return nil, err
+		if !filepath.IsAbs(*dir) {
+			*dir = filepath.Join(root, *dir)
 		}
 	}
 

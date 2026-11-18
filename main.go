@@ -121,15 +121,7 @@ func resolveCommand(args []string) (string, []string) {
 }
 
 func commandBuild() error {
-	dir, err := filepath.Abs(projectArg())
-	if err != nil {
-		return err
-	}
-	if err := os.Chdir(dir); err != nil {
-		return err
-	}
-
-	app, err := LoadApp(dir, configFile, srcFlag, outFlag)
+	app, err := LoadApp(projectArg(), configFile, srcFlag, outFlag)
 	if err != nil {
 		return err
 	}
@@ -143,15 +135,7 @@ func commandDev() error {
 		return fmt.Errorf("invalid port: %v", portFlag)
 	}
 
-	dir, err := filepath.Abs(projectArg())
-	if err != nil {
-		return err
-	}
-	if err := os.Chdir(dir); err != nil {
-		return err
-	}
-
-	app, err := LoadApp(dir, configFile, srcFlag, outFlag)
+	app, err := LoadApp(projectArg(), configFile, srcFlag, outFlag)
 	if err != nil {
 		return err
 	}

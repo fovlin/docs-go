@@ -41,7 +41,6 @@ func TestInitCustomConfig(t *testing.T) {
 	if _, err := os.Stat(filepath.Join(root, "config/docs.json")); !os.IsNotExist(err) {
 		t.Fatalf("unexpected config/docs.json: %v", err)
 	}
-	t.Chdir(root)
 	app, err := LoadApp(root, "site.json", "", "")
 	if err != nil {
 		t.Fatal(err)
