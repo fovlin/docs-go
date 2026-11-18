@@ -1,12 +1,21 @@
 package main
 
 import (
+	"embed"
 	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"acovia.net/docs-go/internal/record"
 )
+
+//go:embed theme scaffold
+var themeFS embed.FS
+
+const version = "1.0.2"
+
 
 func runInit(root string, force bool, configName string) error {
 	if info, err := os.Stat(root); err == nil && !info.IsDir() {
@@ -69,27 +78,15 @@ func runInit(root string, force bool, configName string) error {
 	if err := os.MkdirAll(filepath.Join(root, defaultPublicDir), 0o755); err != nil {
 		return fmt.Errorf("create public: %w", err)
 	}
-
-	display := displayPath(root)
-	logInfo("initialized %s", display)
-	if !logQuiet {
+	relative, err := filepath.Rel("./", root)
+	record.Info("initialized %s", relative)
 		for _, name := range created {
-			logPlain("  create  %s\n", name)
+			record.Info("  create  %s\n", name)
 		}
 		for _, name := range kept {
-			logPlain("  keep    %s\n", name)
+			record.Info("  keep    %s\n", name)
 		}
-		logPlain("\nnext:\n  cd %s\n  docs-go dev\n", display)
-	}
+		record.Info("\nnext:\n  cd %s\n  docs-go dev\n", relative)
 
 	return nil
-}
-
-func displayPath(root string) string {
-	cwd, _ := os.Getwd()
-	relative, err := filepath.Rel(cwd, root)
-	if err == nil && !strings.HasPrefix(relative, "..") {
-		return relative
-	}
-	return root
 }

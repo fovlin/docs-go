@@ -21,7 +21,6 @@ func writeFile(t *testing.T, name string, content string) {
 func loadTestProject(t *testing.T, root string) *App {
 	t.Helper()
 
-	logQuiet = true
 	app, err := LoadApp(root, "config/docs.json", "", "")
 	if err != nil {
 		t.Fatal(err)
@@ -273,7 +272,7 @@ func TestBuildRejectsDuplicateOutput(t *testing.T) {
 	writeFile(t, filepath.Join(root, "docs", "guide", "start.markdown"), "# Duplicate\n")
 	app := loadTestProject(t, root)
 
-	if err := runBuild(app); err == nil || !strings.Contains(err.Error(), "both map to") {
+	if err := runBuild(app); err == nil || !strings.Contains(err.Error(), "both write") {
 		t.Fatalf("expected duplicate output error, got %v", err)
 	}
 }
@@ -338,18 +337,6 @@ func TestBrandOmitsImageWithoutLogo(t *testing.T) {
 	html = brand(page)
 	if !strings.Contains(html, `<img class="brand-logo" src="/logo.svg"`) {
 		t.Fatalf("brand did not render the configured logo: %s", html)
-	}
-}
-
-func TestBuildRejectsReserved404Output(t *testing.T) {
-	root := t.TempDir()
-	writeTestProject(t, root)
-	writeFile(t, filepath.Join(root, "docs", "404.md"), "# Custom 404\n")
-
-	app := loadTestProject(t, root)
-	err := runBuild(app)
-	if err == nil || !strings.Contains(err.Error(), "reserved output 404.html") {
-		t.Fatalf("expected reserved output error, got %v", err)
 	}
 }
 

@@ -19,7 +19,6 @@ options:
   -a, --addr <ip>       dev listen address (default: localhost)
   -p, --port <port>     dev listen port (default: 7280)
   -f, --force           overwrite scaffold files in init
-  -q, --quiet           quiet output
 
 examples:
   docs-go init my-docs

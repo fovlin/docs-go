@@ -32,7 +32,6 @@ func TestValidateFlagValues(t *testing.T) {
 
 func TestInitCustomConfig(t *testing.T) {
 	root := t.TempDir()
-	logQuiet = true
 	if err := runInit(root, false, "site.json"); err != nil {
 		t.Fatal(err)
 	}

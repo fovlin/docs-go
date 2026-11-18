@@ -57,7 +57,6 @@ func initProgram() error {
 	opt.StringVar(&outFlag, "o", "out", "")
 	opt.StringVar(&addrFlag, "a", "addr", "localhost")
 	opt.StringVar(&portFlag, "p", "port", "7280")
-	opt.BoolSwitch(&logQuiet, "q", "quiet")
 	opt.BoolSwitch(&record.EnableColor, "", "color")
 	opt.BoolSwitch(&record.EnableTimestamp, "t", "time")
 	opt.BoolSwitch(&forceFlag, "f", "force")

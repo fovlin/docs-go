@@ -160,7 +160,7 @@ func (config *Config) normalize() {
 	config.SidebarFile = firstNonEmpty(config.SidebarFile, defaultSidebarFile)
 
 	config.Base = normalizeBase(config.Base)
-	config.SiteURL = strings.TrimRight(strings.TrimSpace(config.SiteURL), "/")
+	config.SiteURL = strings.TrimSpace(config.SiteURL)
 	config.Logo = strings.TrimSpace(config.Logo)
 	config.Favicon = strings.TrimSpace(config.Favicon)
 	config.EditLink = strings.TrimSpace(config.EditLink)

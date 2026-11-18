@@ -11,6 +11,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"acovia.net/docs-go/internal/record"
 )
 
 func runBuild(app *App) error {
@@ -32,7 +34,7 @@ func runBuild(app *App) error {
 		return fmt.Errorf("write favicon: %w", err)
 	}
 
-	count, err := app.writePages()
+	count, err := app.buildPage()
 	if err != nil {
 		return err
 	}
@@ -55,36 +57,34 @@ func runBuild(app *App) error {
 		}
 	}
 
-	logInfo("built %d pages in %s", count, time.Since(start).Round(time.Millisecond))
-	logInfo("output: %s", app.OutDir)
+	record.Info("built %d pages in %s", count, time.Since(start).Round(time.Millisecond))
+	record.Info("output: %s", app.OutDir)
 
 	return nil
 }
 
-func (app *App) writePages() (int, error) {
+func (app *App) buildPage() (int, error) {
 	count := 0
-	seenURL := make(map[string]string)
 	seenOut := make(map[string]string)
 
 	err := app.walkPages(func(page *Page) error {
-		if strings.EqualFold(page.OutPath, "404.html") {
-			return fmt.Errorf("page %s maps to reserved output 404.html", page.SourcePath)
-		}
-		key := strings.ToLower(page.URL)
-		if existing, ok := seenURL[key]; ok {
-			return fmt.Errorf("pages %s and %s both map to %s", existing, page.SourcePath, page.URL)
-		}
 		if existing, ok := seenOut[page.OutPath]; ok {
 			return fmt.Errorf("pages %s and %s both write %s", existing, page.SourcePath, page.OutPath)
 		}
-		seenURL[key] = page.SourcePath
 		seenOut[page.OutPath] = page.SourcePath
+	
+		document, err := app.renderPageHTML(page)
+		if err != nil {
+			return err
+		}
 
-		if err := app.renderPage(page); err != nil {
-			return fmt.Errorf("render %s: %w", page.SourcePath, err)
+		err = app.writeOutputFile(page.OutPath, document)
+		if err != nil {
+			return err
 		}
 
 		count++
+
 		return nil
 	})
 
@@ -97,20 +97,7 @@ func (app *App) walkPages(visit func(*Page) error) error {
 			return err
 		}
 
-		if entry.IsDir() {
-			if current == app.SrcDir {
-				return nil
-			}
-
-			name := entry.Name()
-			if name == ".git" || name == "node_modules" || strings.HasPrefix(name, ".") {
-				return filepath.SkipDir
-			}
-
-			return nil
-		}
-
-		if !isMarkdownFile(current) {
+		if entry.IsDir() || !isMarkdownFile(current) {
 			return nil
 		}
 
@@ -213,7 +200,7 @@ func (app *App) sitemapBytes() ([]byte, error) {
 
 	if err := app.walkPages(func(page *Page) error {
 		builder.WriteString("  <url>\n    <loc>")
-		_ = xml.EscapeText(&builder, []byte(app.SiteURL+page.Href))
+		_ = xml.EscapeText(&builder, []byte(filepath.Join(app.SiteURL, page.URL)))
 		builder.WriteString("</loc>\n")
 		if !page.ModTime.IsZero() {
 			builder.WriteString("    <lastmod>")

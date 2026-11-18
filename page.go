@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"acovia.net/docs-go/internal/markdown"
 )
 
 type PageLink struct {
@@ -19,7 +21,6 @@ type Page struct {
 	SourcePath  string
 	AbsPath     string
 	URL         string
-	Href        string
 	OutPath     string
 	Heading     string
 	Description string
@@ -31,7 +32,7 @@ type RenderState struct {
 	*Page
 
 	Body        string
-	Outline     []OutlineEntry
+	Outline     []markdown.Heading
 	Prev        *PageLink
 	Next        *PageLink
 	EditURL     string
@@ -86,6 +87,45 @@ func pageOutPath(sourcePath string) string {
 	return relative + ".html"
 }
 
+func (app *App) loadPage(relative string) (*Page, error) {
+	absolute := filepath.Join(app.SrcDir, filepath.FromSlash(relative))
+	info, err := os.Stat(absolute)
+	if err != nil {
+		return nil, err
+	}
+
+	page := &Page{
+		SourcePath: relative,
+		AbsPath:    absolute,
+		URL:        pageURL(relative, app.CleanURLs),
+		OutPath:    pageOutPath(relative),
+		ModTime:    info.ModTime(),
+	}
+
+	return page, nil
+}
+
+func (app *App) pageTitle(sitePath string) string {
+	if page := app.findPageByURL(sitePath); page != nil {
+		return app.titleFor(page)
+	}
+
+	if page := app.findPageBySource(strings.TrimPrefix(sitePath, "/")); page != nil {
+		return app.titleFor(page)
+	}
+
+	return humanizeTitle(strings.TrimSuffix(sitePath, "/"))
+}
+
+func (app *App) titleFor(page *Page) string {
+	document, err := app.parsePage(page)
+	if err == nil && document.FirstH1 != "" {
+		return document.FirstH1
+	}
+
+	return humanizeTitle(page.SourcePath)
+}
+
 func humanizeTitle(sourcePath string) string {
 	name := strings.TrimSuffix(path.Base(sourcePath), path.Ext(sourcePath))
 	if name == "index" {
@@ -103,23 +143,4 @@ func humanizeTitle(sourcePath string) string {
 	runes[0] = []rune(strings.ToUpper(string(runes[0])))[0]
 
 	return string(runes)
-}
-
-func (app *App) loadPage(relative string) (*Page, error) {
-	absolute := filepath.Join(app.SrcDir, filepath.FromSlash(relative))
-	info, err := os.Stat(absolute)
-	if err != nil {
-		return nil, err
-	}
-
-	page := &Page{
-		SourcePath: relative,
-		AbsPath:    absolute,
-		URL:        pageURL(relative, app.CleanURLs),
-		OutPath:    pageOutPath(relative),
-		ModTime:    info.ModTime(),
-	}
-	page.Href = app.href(page.URL)
-
-	return page, nil
 }

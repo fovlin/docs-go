@@ -13,6 +13,8 @@ import (
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"acovia.net/docs-go/internal/record"
 )
 
 // Dev serves one immutable App snapshot per request. Config and sidebar
@@ -63,7 +65,7 @@ func (dev *Dev) run(addr string, port int) error {
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 
-	logInfo("dev server: http://%s", server.Addr)
+	record.Info("dev server: http://%s", server.Addr)
 
 	return server.ListenAndServe()
 }
@@ -113,7 +115,7 @@ func (dev *Dev) snapshot() *App {
 
 	reloaded, err := LoadApp(dev.root, dev.configFile, dev.srcFlag, dev.outFlag)
 	if err != nil {
-		logWarn("reload: %v", err)
+		record.Info("reload: %v", err)
 		// Remember the failed stamps so an unchanged broken config is not
 		// retried on every request; any later edit triggers a reload again.
 		dev.stamps.Store(&devStamps{config: configStamp, sidebar: sidebarStamp, src: srcStamp})
@@ -183,7 +185,7 @@ func (app *App) serveDev(w http.ResponseWriter, r *http.Request) {
 
 		document, err := app.renderPageHTML(page)
 		if err != nil {
-			logError("render %s: %v", page.SourcePath, err)
+			record.Info("render %s: %v", page.SourcePath, err)
 			http.Error(w, "internal server error", http.StatusInternalServerError)
 			return
 		}

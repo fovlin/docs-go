@@ -1,7 +1,6 @@
 package main
 
 import (
-	"acovia.net/docs-go/internal/markdown"
 	"fmt"
 	"html"
 	"net/url"
@@ -9,6 +8,9 @@ import (
 	"path"
 	"path/filepath"
 	"strings"
+
+	"acovia.net/docs-go/internal/markdown"
+	"acovia.net/docs-go/internal/record"
 )
 
 func (app *App) parsePage(page *Page) (*markdown.Document, error) {
@@ -24,7 +26,7 @@ func (app *App) parsePage(page *Page) (*markdown.Document, error) {
 		return nil, fmt.Errorf("read %s: %w", page.SourcePath, err)
 	}
 
-	document := parseMarkdown(data)
+	document := markdown.Parse(data)
 	if statErr == nil {
 		app.Documents.store(page.AbsPath, document, info.ModTime().UnixNano(), info.Size())
 	}
@@ -51,7 +53,7 @@ func (app *App) renderPageHTML(page *Page) ([]byte, error) {
 	state.Nav = app.navFor(page.URL)
 	state.Sidebar = app.sidebarFor(page.URL)
 	app.applyNavigation(state)
-	state.Body = string(renderMarkdown(document, func(destination string, image bool) string {
+	state.Body = string(document.Render(func(destination string, image bool) string {
 		return app.resolveDestination(page, destination, image)
 	}))
 	state.Outline = filterOutline(document.Headings, app.Outline.Level)
@@ -60,15 +62,6 @@ func (app *App) renderPageHTML(page *Page) ([]byte, error) {
 	app.fillPageChrome(state)
 
 	return app.renderLayout(state), nil
-}
-
-func (app *App) renderPage(page *Page) error {
-	document, err := app.renderPageHTML(page)
-	if err != nil {
-		return err
-	}
-
-	return app.writeOutputFile(page.OutPath, document)
 }
 
 func (app *App) fillPageChrome(state *RenderState) {
@@ -84,11 +77,11 @@ func (app *App) fillPageChrome(state *RenderState) {
 	state.Title = title
 	state.Lang = app.Lang
 	state.Appearance = app.Appearance
-	state.HomeURL = app.href("/")
-	state.StyleURL = app.href("/assets/style.css") + "?v=" + app.AssetVersion
-	state.InitURL = app.href("/assets/init.js") + "?v=" + app.AssetVersion
-	state.AppURL = app.href("/assets/app.js") + "?v=" + app.AssetVersion
-	state.FaviconURL = app.href("/favicon.ico") + "?v=" + app.AssetVersion
+	state.HomeURL = app.url("/")
+	state.StyleURL = app.url("/assets/style.css") + "?v=" + app.AssetVersion
+	state.InitURL = app.url("/assets/init.js") + "?v=" + app.AssetVersion
+	state.AppURL = app.url("/assets/app.js") + "?v=" + app.AssetVersion
+	state.FaviconURL = app.url("/favicon.ico") + "?v=" + app.AssetVersion
 	state.LogoURL = app.publicURL(app.Logo)
 	state.PrevText = app.PrevText
 	state.NextText = app.NextText
@@ -96,7 +89,7 @@ func (app *App) fillPageChrome(state *RenderState) {
 	state.Version = version
 
 	if app.SiteURL != "" {
-		state.Canonical = app.SiteURL + state.Href
+		state.Canonical = app.SiteURL + state.URL
 	}
 	if app.Config.Favicon != "" {
 		state.FaviconURL = app.publicURL(app.Config.Favicon)
@@ -117,7 +110,7 @@ func (app *App) publicURL(value string) string {
 		value = "/" + value
 	}
 
-	return app.href(value)
+	return app.url(value)
 }
 
 func (app *App) editURL(page *Page) string {
@@ -163,7 +156,7 @@ func (app *App) resolveDestination(page *Page, raw string, image bool) string {
 		if linked := app.findPageBySource(strings.TrimPrefix(target, "/")); linked != nil {
 			target = linked.URL
 		} else {
-			logWarn("%s links to a page that does not exist: %s", page.SourcePath, parsed.Path)
+			record.Warn("%s links to a page that does not exist: %s", page.SourcePath, parsed.Path)
 			target = markdownFallbackURL(target, app.CleanURLs)
 		}
 	} else if !image {
@@ -171,10 +164,10 @@ func (app *App) resolveDestination(page *Page, raw string, image bool) string {
 			target = linked.URL
 		}
 	} else if !app.assetExists(target) {
-		logWarn("%s references an image that does not exist: %s", page.SourcePath, parsed.Path)
+		record.Warn("%s references an image that does not exist: %s", page.SourcePath, parsed.Path)
 	}
 
-	return app.href(target) + urlSuffix(parsed)
+	return app.url(target) + urlSuffix(parsed)
 }
 
 func (app *App) assetExists(sitePath string) bool {
@@ -224,7 +217,7 @@ func markdownFallbackURL(value string, cleanURLs bool) string {
 	return strings.TrimSuffix(value, path.Ext(value)) + ".html"
 }
 
-func filterOutline(headings []OutlineEntry, levels []int) []OutlineEntry {
+func filterOutline(headings []markdown.Heading, levels []int) []markdown.Heading {
 	if len(levels) == 0 {
 		return nil
 	}
@@ -234,7 +227,7 @@ func filterOutline(headings []OutlineEntry, levels []int) []OutlineEntry {
 		allowed[level] = true
 	}
 
-	outline := make([]OutlineEntry, 0, len(headings))
+	outline := make([]markdown.Heading, 0, len(headings))
 	for _, heading := range headings {
 		if heading.ID != "" && heading.Text != "" && allowed[heading.Level] {
 			outline = append(outline, heading)
@@ -257,12 +250,11 @@ func (app *App) notFoundPage() *RenderState {
 	state := &RenderState{Page: &Page{
 		Heading: app.UI.NotFoundTitle,
 		URL:     "/404",
-		Href:    app.href("/404"),
 	}, Body: `<div class="not-found">` +
 		`<p class="not-found-code">404</p>` +
 		`<h1>` + html.EscapeString(app.UI.NotFoundTitle) + `</h1>` +
 		`<p>` + html.EscapeString(app.UI.NotFoundText) + `</p>` +
-		`<p><a class="btn btn-primary" href="` + html.EscapeString(app.href("/")) + `">` + html.EscapeString(app.UI.BackHome) + `</a></p>` +
+		`<p><a class="btn btn-primary" href="` + html.EscapeString(app.url("/")) + `">` + html.EscapeString(app.UI.BackHome) + `</a></p>` +
 		`</div>`,
 	}
 
