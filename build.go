@@ -72,7 +72,7 @@ func (app *App) buildPage() (int, error) {
 			return fmt.Errorf("pages %s and %s both write %s", existing, page.SourcePath, page.OutPath)
 		}
 		seenOut[page.OutPath] = page.SourcePath
-	
+
 		document, err := app.renderPageHTML(page)
 		if err != nil {
 			return err

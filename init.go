@@ -16,7 +16,6 @@ var themeFS embed.FS
 
 const version = "1.0.2"
 
-
 func runInit(root string, force bool, configName string) error {
 	if info, err := os.Stat(root); err == nil && !info.IsDir() {
 		return fmt.Errorf("not a directory: %s", root)
@@ -80,13 +79,13 @@ func runInit(root string, force bool, configName string) error {
 	}
 	relative, err := filepath.Rel("./", root)
 	record.Info("initialized %s", relative)
-		for _, name := range created {
-			record.Info("  create  %s\n", name)
-		}
-		for _, name := range kept {
-			record.Info("  keep    %s\n", name)
-		}
-		record.Info("\nnext:\n  cd %s\n  docs-go dev\n", relative)
+	for _, name := range created {
+		record.Info("  create  %s\n", name)
+	}
+	for _, name := range kept {
+		record.Info("  keep    %s\n", name)
+	}
+	record.Info("\nnext:\n  cd %s\n  docs-go dev\n", relative)
 
 	return nil
 }
