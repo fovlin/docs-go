@@ -58,7 +58,7 @@ my-docs/
 
 ## Configuration
 
-`config/docs.json` covers the title, description, language, base path, directories,
+`config/docs.json` covers the title, description, language, directories,
 navigation and theme. Every field is optional; missing fields use
 defaults. Paths are relative to the project directory.
 
@@ -138,8 +138,7 @@ docs-go <command> [options] [project]
   meta description; missing values fall back to the file name and site config.
 - Markdown links to `.md` files are rewritten to the generated pages; missing
   targets are reported as warnings.
-- Clean URLs, configurable base path, canonical URLs, `404.html` and an
-  optional `sitemap.xml`.
+- Clean URLs, canonical URLs, `404.html` and an optional `sitemap.xml`.
 - Direct output generation: `dist/` is cleared and rewritten on each build.
 - A dev server that renders individual pages from source on request and
   reloads config/sidebar snapshots without a full rebuild.
