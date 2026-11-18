@@ -3,7 +3,9 @@ package main
 import (
 	"fmt"
 	"html"
+	"net/url"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 
@@ -41,13 +43,40 @@ func (app *App) renderPageHTML(page *Page, data []byte) ([]byte, error) {
 	state.Nav = app.navFor(page.URL)
 	state.Sidebar = app.sidebarFor(page.URL)
 	app.applyNavigation(state)
-	state.Body = string(document.Render())
+	state.Body = string(document.Render(func(destination string, image bool) string {
+		return app.resolveDestination(page, destination, image)
+	}))
 	state.Outline = filterOutline(document.Headings, app.Outline.Level)
 	state.EditURL = app.editURL(page)
 	state.LastUpdated = app.lastUpdated(page)
 	app.fillPageChrome(state)
 
 	return app.renderLayout(state), nil
+}
+
+func (app *App) resolveDestination(page *Page, raw string, _ bool) string {
+	parsed, err := url.Parse(raw)
+	if err != nil || parsed.Scheme != "" || parsed.Host != "" || strings.HasPrefix(raw, "//") {
+		return raw
+	}
+
+	target := parsed.Path
+	if target == "" {
+		return raw
+	}
+
+	if !strings.HasPrefix(target, "/") {
+		target = path.Join("/", path.Dir(page.SourcePath), target)
+	}
+
+	if extension := strings.ToLower(path.Ext(target)); extension == ".md" || extension == ".markdown" {
+		target = app.fmtURL(strings.TrimSuffix(target, path.Ext(target)))
+	}
+
+	parsed.Path = target
+	parsed.RawPath = ""
+
+	return parsed.String()
 }
 
 func (app *App) fillPageChrome(state *RenderState) {

@@ -8,7 +8,7 @@ import (
 func render(source string) string {
 	document := Parse([]byte(source))
 
-	return string(document.Render())
+	return string(document.Render(nil))
 }
 
 func TestHeadingsAndIDs(t *testing.T) {
@@ -223,7 +223,7 @@ func TestRenderFallback(t *testing.T) {
 		}},
 	}}}
 
-	if !strings.Contains(string(document.Render()), "fallback") {
+	if !strings.Contains(string(document.Render(nil)), "fallback") {
 		t.Fatal("unknown block did not render its children")
 	}
 
@@ -236,7 +236,7 @@ func TestRenderFallback(t *testing.T) {
 		}},
 	}}}
 
-	html := string(document.Render())
+	html := string(document.Render(nil))
 	if !strings.Contains(html, "child") || !strings.Contains(html, "tail") {
 		t.Fatalf("unknown inline dropped content: %s", html)
 	}
@@ -256,7 +256,7 @@ func FuzzParse(f *testing.F) {
 
 	f.Fuzz(func(t *testing.T, source string) {
 		document := Parse([]byte(source))
-		_ = document.Render()
+		_ = document.Render(nil)
 	})
 }
 
