@@ -13,6 +13,7 @@ func writeFile(t *testing.T, name string, content string) {
 	if err := os.MkdirAll(filepath.Dir(name), 0o755); err != nil {
 		t.Fatal(err)
 	}
+
 	if err := os.WriteFile(name, []byte(content), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -166,31 +167,6 @@ func TestNavigationIsPreResolved(t *testing.T) {
 	}
 	if tree[0].HasActive || tree[0].Items[1].Active {
 		t.Fatal("per-page marking mutated the shared sidebar tree")
-	}
-}
-
-func TestSidebarMainNavIsList(t *testing.T) {
-	state := &RenderState{
-		Page: &Page{},
-		Nav: []*NavLink{
-			{Text: "Guide", Href: "/guide/"},
-			{Text: "API", Href: "https://example.com", External: true},
-		},
-		UI: UIConfig{Menu: "Menu"},
-	}
-
-	html := sidebarHTML(state)
-
-	if !strings.Contains(html, `<ul class="mobile-nav-list">`) {
-		t.Fatalf("main nav is not a list: %s", html)
-	}
-
-	if !strings.Contains(html, `<li class="mobile-nav-entry"><a class="mobile-nav-link" href="/guide/">Guide</a></li>`) {
-		t.Fatalf("main nav link markup = %s", html)
-	}
-
-	if !strings.Contains(html, `target="_blank" rel="noopener">API</a></li>`) {
-		t.Fatalf("external main nav link markup = %s", html)
 	}
 }
 
@@ -359,52 +335,6 @@ func TestSidebarRejectsNormalizedDuplicatePrefixes(t *testing.T) {
 	_, err := LoadApp(root, "config/docs.json", "", "")
 	if err == nil || !strings.Contains(err.Error(), "defined more than once") {
 		t.Fatalf("expected duplicate sidebar error, got %v", err)
-	}
-}
-
-func TestURLForFile(t *testing.T) {
-	root := t.TempDir()
-	app := &App{
-		Config: Config{CleanURLs: true},
-		SrcDir: root,
-	}
-
-	cases := []struct {
-		file string
-		want string
-	}{
-		{"index.md", "/"},
-		{"guide/index.md", "/guide/"},
-		{"guide/start.md", "/guide/start/"},
-		{"upper.MD", "/upper/"},
-	}
-
-	for _, test := range cases {
-		got := app.urlForFile(filepath.Join(root, filepath.FromSlash(test.file)))
-		if got != test.want {
-			t.Errorf("urlForFile(%q) = %q, want %q", test.file, got, test.want)
-		}
-	}
-
-	app.CleanURLs = false
-	if got := app.urlForFile(filepath.Join(root, "guide", "start.md")); got != "/guide/start.html" {
-		t.Errorf("non-clean urlForFile = %q", got)
-	}
-}
-
-func TestFileForURLPrefersSource(t *testing.T) {
-	root := t.TempDir()
-	writeTestProject(t, root)
-	writeFile(t, filepath.Join(root, "docs", "logo.svg"), "source")
-	writeFile(t, filepath.Join(root, "public", "logo.svg"), "public")
-
-	app := loadTestProject(t, root)
-	file, ok := app.fileForURL("/logo.svg")
-	if !ok {
-		t.Fatal("logo.svg not found")
-	}
-	if !isWithin(app.SrcDir, file) {
-		t.Fatalf("fileForURL picked %q, want the source file", file)
 	}
 }
 

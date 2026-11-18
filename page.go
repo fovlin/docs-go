@@ -3,7 +3,6 @@ package main
 import (
 	"os"
 	"path"
-	"path/filepath"
 	"strings"
 	"time"
 
@@ -60,59 +59,17 @@ type RenderState struct {
 	Version    string
 }
 
-// urlForFile maps a source file under SrcDir to its site URL path. The result
-// is unescaped; escapePath is applied only when writing HTML.
-func (app *App) urlForFile(filePath string) string {
-	relative, err := filepath.Rel(app.SrcDir, filePath)
-	if err != nil {
-		return "/"
-	}
-
-	relative = filepath.ToSlash(relative)
-	relative = strings.TrimSuffix(relative, path.Ext(relative))
-	relative = strings.TrimPrefix(path.Clean("/"+relative), "/")
-
-	switch {
-	case relative == "" || relative == "index":
-		return "/"
-	case strings.HasSuffix(relative, "/index"):
-		return "/" + strings.TrimSuffix(relative, "index")
-	case app.CleanURLs:
-		return "/" + relative + "/"
-	default:
-		return "/" + relative + ".html"
-	}
-}
-
 func (app *App) loadPage(filePath string) (*Page, error) {
-	absolute, err := filepath.Abs(filePath)
+	info, err := os.Stat(filePath)
 	if err != nil {
 		return nil, err
 	}
 
-	info, err := os.Stat(absolute)
-	if err != nil {
-		return nil, err
-	}
-
-	relative, err := filepath.Rel(app.SrcDir, absolute)
-	if err != nil {
-		return nil, err
-	}
-	relative = filepath.ToSlash(relative)
-
-	url := app.urlForFile(absolute)
+	url := app.fmtPageURL(filePath)
 	outPath := strings.TrimPrefix(url, "/")
-	switch {
-	case outPath == "" || strings.HasSuffix(url, "/"):
-		outPath += "index.html"
-	case !strings.HasSuffix(outPath, ".html"):
-		outPath += ".html"
-	}
 
 	return &Page{
-		SourcePath: relative,
-		AbsPath:    absolute,
+		SourcePath: filePath,
 		URL:        url,
 		OutPath:    outPath,
 		ModTime:    info.ModTime(),

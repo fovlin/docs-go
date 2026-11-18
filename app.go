@@ -48,10 +48,10 @@ func LoadApp(projectRoot, configFile, srcFlag, outFlag string) (*App, error) {
 		Config:      loaded,
 		Root:        absoluteRoot,
 		ConfigPath:  path,
-		SrcDir:      resolveConfigPath(absoluteRoot, loaded.SrcDir),
-		OutDir:      resolveConfigPath(absoluteRoot, loaded.OutDir),
-		PublicDir:   resolveConfigPath(absoluteRoot, loaded.PublicDir),
-		SidebarPath: resolveConfigPath(absoluteRoot, loaded.SidebarFile),
+		SrcDir:      loaded.SrcDir,
+		OutDir:      loaded.OutDir,
+		PublicDir:   loaded.PublicDir,
+		SidebarPath: loaded.SidebarFile,
 	}
 
 	info, err := os.Stat(app.SrcDir)

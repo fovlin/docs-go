@@ -130,14 +130,9 @@ func navigation(page *RenderState) string {
 		}
 
 		fmt.Fprintf(&b, "<a class=\"%s\" href=\"%s\"", class, escapeHTML(link.Href))
-		if link.External {
-			b.WriteString(" target=\"_blank\" rel=\"noopener\"")
-		}
+
 		b.WriteString(">")
 		b.WriteString(escapeHTML(link.Text))
-		if link.External {
-			b.WriteString("<svg class=\"external-icon\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M7 17 17 7M9 7h8v8\"/></svg>")
-		}
 		b.WriteString("</a>\n")
 	}
 	return b.String()
@@ -184,9 +179,6 @@ func sidebarHTML(page *RenderState) string {
 			}
 
 			fmt.Fprintf(&b, "<li class=\"mobile-nav-entry\"><a class=\"%s\" href=\"%s\"", class, escapeHTML(link.Href))
-			if link.External {
-				b.WriteString(" target=\"_blank\" rel=\"noopener\"")
-			}
 			fmt.Fprintf(&b, ">%s</a></li>\n", escapeHTML(link.Text))
 		}
 
@@ -226,9 +218,6 @@ func sidebarItems(nodes []*SidebarNode) string {
 					active = " active"
 				}
 				fmt.Fprintf(&b, "<a class=\"sidebar-group-link%s\" href=\"%s\"", active, escapeHTML(node.Href))
-				if node.External {
-					b.WriteString(" target=\"_blank\" rel=\"noopener\"")
-				}
 				fmt.Fprintf(&b, ">%s</a>\n", escapeHTML(node.Text))
 			} else {
 				fmt.Fprintf(&b, "<span class=\"sidebar-group-label\">%s</span>\n", escapeHTML(node.Text))
@@ -243,13 +232,8 @@ func sidebarItems(nodes []*SidebarNode) string {
 				active = " active"
 			}
 			fmt.Fprintf(&b, "<a class=\"sidebar-link%s\" href=\"%s\"", active, escapeHTML(node.Href))
-			if node.External {
-				b.WriteString(" target=\"_blank\" rel=\"noopener\"")
-			}
+
 			fmt.Fprintf(&b, "><span>%s</span>", escapeHTML(node.Text))
-			if node.External {
-				b.WriteString("<svg class=\"external-icon\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M7 17 17 7M9 7h8v8\"/></svg>")
-			}
 			b.WriteString("</a>\n")
 		}
 

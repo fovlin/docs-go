@@ -4,7 +4,7 @@
   "lang": "en",
   "edit_link": "https://github.com/fovlin/docs-go/",
   "src_dir": "docs",
-  "out_dir": "./dist",
+  "out_dir": "dist",
   "public_dir": "public",
   "clean_urls": true,
   "sidebar_file": "config/sidebar.json",

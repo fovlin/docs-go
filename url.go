@@ -13,7 +13,7 @@ func (app *App) applyNavigation(state *RenderState) {
 	var walk func([]*SidebarNode)
 	walk = func(nodes []*SidebarNode) {
 		for _, node := range nodes {
-			if node.Href != "" && node.Path != "" && !node.External {
+			if node.Href != "" && node.Path != "" {
 				links = append(links, node)
 			}
 			walk(node.Items)
@@ -37,7 +37,7 @@ func (app *App) applyNavigation(state *RenderState) {
 	}
 }
 
-func (app *App) fileForURL(sitePath string) (string, bool) {
+func (app *App) fileForURL(sitePath string) (string, []byte, error) {
 	relative := strings.TrimPrefix(path.Clean("/"+sitePath), "/")
 
 	if app.CleanURLs && path.Base(relative) == "index.html" {
@@ -48,34 +48,57 @@ func (app *App) fileForURL(sitePath string) (string, bool) {
 	switch {
 	case relative == "":
 		bases = append(bases, "index")
-	case app.CleanURLs:
+
+	case app.CleanURLs && strings.HasSuffix(relative, "/"):
 		bases = append(bases, relative+"/index", relative)
+	case app.CleanURLs && strings.HasSuffix(relative, "/index.html"):
+		bases = append(bases, relative[:len("index.html")])
+
 	case strings.HasSuffix(strings.ToLower(relative), ".html"):
 		bases = append(bases, relative[:len(relative)-len(".html")])
 	default:
 		bases = append(bases, relative+"/index")
 	}
 
+	namelist := make([]string, 0, 2)
+
 	for _, base := range bases {
 		for _, extension := range []string{".md", ".markdown", ".MD", ".Markdown"} {
-			file := filepath.Join(app.SrcDir, filepath.FromSlash(base+extension))
-			if info, err := os.Stat(file); err == nil && !info.IsDir() {
-				return file, true
-			}
+			namelist = append(namelist, base + extension)
 		}
 	}
 
-	names := []string{relative, path.Join(relative, "index.html")}
 	for _, root := range []string{app.SrcDir, app.PublicDir} {
-		for _, name := range names {
-			file := filepath.Join(root, filepath.FromSlash(name))
-			info, err := os.Stat(file)
-			if err != nil || info.IsDir() || isMarkdownFile(file) && isWithin(app.SrcDir, file) {
+		for _, name := range namelist {
+
+			filename := filepath.Join(root, filepath.FromSlash(name))
+			info, err := os.Stat(filename)
+			if err != nil || info.IsDir() || !isWithin(app.SrcDir, filename) {
 				continue
 			}
-			return file, true
+
+			fileData, err := os.ReadFile(filename)
+			return filename, fileData, err
 		}
 	}
 
-	return "", false
+	return "", nil, os.ErrNotExist
+}
+
+func fmtURL(path string) (string) {
+	path = strings.TrimSpace(path)
+	path = strings.Trim(path, "/")
+	if path == "" {
+		return "/"
+	}
+	return "/" + strings.Trim(path, "/") + "/"
+}
+
+func (app *App) fmtPageURL(filePath string) (string) {
+	switch {
+	case app.CleanURLs:
+		return fmtURL(filePath) + "index.html"
+	default:
+		return fmtURL(filePath)
+	}
 }

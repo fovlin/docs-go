@@ -134,28 +134,29 @@ func (app *App) serveDev(w http.ResponseWriter, r *http.Request) {
 		sitePath = "/" + sitePath
 	}
 
-	if file, ok := app.fileForURL(sitePath); ok {
-		if isMarkdownFile(file) && isWithin(app.SrcDir, file) {
-			page, err := app.loadPage(file)
+	if filePath, file, err := app.fileForURL(sitePath); file != nil {
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
+
+		if isMarkdownFile(filePath) {
+			page, err := app.loadPage(filePath)
 			if err != nil {
-				http.NotFound(w, r)
+				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
 
 			document, err := app.renderPageHTML(page)
 			if err != nil {
-				record.Info(fmt.Sprintf("render %s: %v", page.SourcePath, err))
-				http.Error(w, "internal server error", http.StatusInternalServerError)
+				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
 
-			serveBytes(w, r, page.OutPath, document)
-			return
+		serveBytes(w, r, filePath, document)
 		}
 
-		if app.serveAssetFile(w, r, sitePath, file) {
-			return
-		}
+		serveBytes(w, r, filepath.Base(filePath), file)
+
 	}
 
 	switch {

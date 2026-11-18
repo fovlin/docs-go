@@ -130,7 +130,7 @@ func (app *App) resolveDestination(page *Page, raw string, _ bool) string {
 	}
 	target = canonicalURL(target)
 
-	return escapePath(target) + urlSuffix(parsed)
+	return escapePath(target)
 }
 
 func filterOutline(headings []markdown.Heading, levels []int) []markdown.Heading {

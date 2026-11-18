@@ -32,7 +32,6 @@ type SidebarNode struct {
 	Text      string
 	Href      string
 	Path      string
-	External  bool
 	Active    bool
 	HasActive bool
 	Collapsed bool

@@ -226,16 +226,6 @@ func firstNonEmpty(value string, fallback string) string {
 	return value
 }
 
-func resolveConfigPath(root string, value string) string {
-	if value == "" {
-		return root
-	}
-	if filepath.IsAbs(value) {
-		return filepath.Clean(value)
-	}
-	return filepath.Join(root, value)
-}
-
 func applyConfigOverrides(config *Config, src string, out string) {
 	if src != "" {
 		config.SrcDir = src

@@ -6,10 +6,7 @@ type NavLink struct {
 	Text     string
 	Href     string
 	Path     string
-	External bool
 	Active   bool
-	// ActiveMatch is the normalized URL prefix from config. It is resolved
-	// once at load time; navFor only evaluates it against one page URL.
 	ActiveMatch string
 }
 
@@ -23,20 +20,13 @@ func (app *App) resolveNav() []*NavLink {
 	links := make([]*NavLink, 0, len(app.Config.Nav))
 
 	for _, item := range app.Config.Nav {
-		linkHref, sitePath, external := app.resolveConfigLink(item.Link)
 		link := &NavLink{
 			Text:     strings.TrimSpace(item.Text),
-			Href:     linkHref,
-			Path:     sitePath,
-			External: external,
+			Href:     item.Link,
 		}
 
-		if link.Text == "" && sitePath == "" {
+		if link.Text == "" {
 			link.Text = item.Link
-		}
-
-		if !external && sitePath != "" && strings.TrimSpace(item.ActiveMatch) != "" {
-			link.ActiveMatch = normalizeSidebarPrefix(item.ActiveMatch)
 		}
 
 		links = append(links, link)
@@ -54,42 +44,15 @@ func (app *App) navFor(pageURL string) []*NavLink {
 
 	links := make([]*NavLink, 0, len(app.Nav))
 	for _, link := range app.Nav {
-		clone := *link
-		if clone.Text == "" && clone.Path != "" {
-			clone.Text = humanizeTitle(strings.TrimSuffix(clone.Path, "/"))
+		if pageURL == link.Href {
+			link.Active = true
 		}
-		if !clone.External && clone.Path != "" {
-			if clone.ActiveMatch != "" {
-				clone.Active = sidebarPrefixMatches(clone.ActiveMatch, pageURL)
-			} else {
-				clone.Active = navActive(clone.Path, pageURL)
-			}
-		}
-
-		links = append(links, &clone)
+		links = append(links, link)
 	}
 
 	return links
 }
 
-func navActive(sitePath string, pageURL string) bool {
-	if sitePath == "" {
-		return false
-	}
-
-	if sitePath == "/" {
-		return pageURL == "/"
-	}
-
-	if sitePath == pageURL {
-		return true
-	}
-
-	return strings.HasPrefix(pageURL, strings.TrimSuffix(sitePath, "/")+"/")
-}
-
-// resolveSidebarTrees resolves the sidebar link text, href, path and external
-// flag for every configured route once. Active/open state is per page.
 func (app *App) resolveSidebarTrees() map[string][]*SidebarNode {
 	trees := make(map[string][]*SidebarNode)
 
@@ -117,12 +80,9 @@ func (app *App) resolveSidebarItems(items []SidebarItem) []*SidebarNode {
 
 func (app *App) resolveSidebarNode(item SidebarItem) *SidebarNode {
 	node := &SidebarNode{
+		Href: item.Link,
 		Text:      strings.TrimSpace(item.Text),
 		Collapsed: item.Collapsed,
-	}
-
-	if item.Link != "" {
-		node.Href, node.Path, node.External = app.resolveConfigLink(item.Link)
 	}
 
 	for index := range item.Items {
@@ -166,19 +126,6 @@ func (app *App) markSidebar(nodes []*SidebarNode, pageURL string) []*SidebarNode
 		clone.Active = node.Path != "" && node.Path == pageURL
 		if !clone.Active && clone.Path != "" && len(clone.Items) > 0 {
 			clone.Active = strings.HasPrefix(pageURL, strings.TrimSuffix(clone.Path, "/")+"/")
-		}
-
-		if clone.Text == "" {
-			if clone.Path != "" {
-				clone.Text = humanizeTitle(strings.TrimSuffix(clone.Path, "/"))
-			} else if clone.External {
-				clone.Text = clone.Href
-			} else if len(clone.Items) > 0 {
-				clone.Text = clone.Items[0].Text
-				if clone.Text == "" {
-					clone.Text = "Section"
-				}
-			}
 		}
 
 		clone.HasActive = false

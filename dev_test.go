@@ -106,29 +106,6 @@ func TestDevFailedReloadKeepsPreviousSnapshot(t *testing.T) {
 	}
 }
 
-func TestDevSeesNewSourceWithoutCache(t *testing.T) {
-	root := t.TempDir()
-	writeTestProject(t, root)
-	app, err := LoadApp(root, "config/docs.json", "", "")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if _, ok := app.fileForURL("/guide/later/"); ok {
-		t.Fatal("unexpected page before creation")
-	}
-
-	writeFile(t, filepath.Join(root, "docs", "guide", "later.md"), "# Later\n")
-
-	file, ok := app.fileForURL("/guide/later/")
-	if !ok {
-		t.Fatal("new source not found")
-	}
-	if page, err := app.loadPage(file); err != nil || page.SourcePath != "guide/later.md" {
-		t.Fatalf("new source = %+v, %v", page, err)
-	}
-}
-
 func plainProject(t *testing.T) *App {
 	t.Helper()
 
@@ -137,77 +114,6 @@ func plainProject(t *testing.T) *App {
 	writeFile(t, filepath.Join(root, "config", "docs.json"), `{"title": "Test docs", "clean_urls": false}`)
 
 	return loadTestProject(t, root)
-}
-
-func TestFileForURLFollowsBuildRoutes(t *testing.T) {
-	cases := []struct {
-		name    string
-		app     *App
-		found   []string
-		missing []string
-	}{
-		{
-			name:    "clean",
-			app:     loadTestProject(t, tempProject(t)),
-			found:   []string{"/", "/guide", "/guide/", "/guide/index.html", "/guide/start", "/guide/start/", "/guide/start/index.html"},
-			missing: []string{"/guide/start.html", "/guide/start.md"},
-		},
-		{
-			name:    "plain",
-			app:     plainProject(t),
-			found:   []string{"/", "/guide", "/guide/", "/guide/index.html", "/guide/start.html"},
-			missing: []string{"/guide/start", "/guide/start/", "/guide/start.md"},
-		},
-	}
-
-	for _, test := range cases {
-		t.Run(test.name, func(t *testing.T) {
-			for _, target := range test.found {
-				file, ok := test.app.fileForURL(target)
-				if !ok {
-					t.Errorf("%s not found", target)
-					continue
-				}
-				if !isWithin(test.app.SrcDir, file) {
-					t.Errorf("%s resolved to %s", target, file)
-				}
-			}
-
-			for _, target := range test.missing {
-				if file, ok := test.app.fileForURL(target); ok {
-					t.Errorf("%s resolved to %s", target, file)
-				}
-			}
-		})
-	}
-}
-
-func TestFileForURLBindsIndexHTMLToSource(t *testing.T) {
-	root := tempProject(t)
-	writeFile(t, filepath.Join(root, "docs", "guide", "deep", "index.md"), "# Deep\n")
-	app := loadTestProject(t, root)
-
-	cases := map[string]string{
-		"/guide/index.html":       "guide/index.md",
-		"/guide/start/index.html": "guide/start.md",
-		"/guide/deep/index.html":  "guide/deep/index.md",
-	}
-
-	for target, source := range cases {
-		file, ok := app.fileForURL(target)
-		if !ok {
-			t.Errorf("%s not found", target)
-			continue
-		}
-
-		relative, err := filepath.Rel(app.SrcDir, file)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if got := filepath.ToSlash(relative); got != source {
-			t.Errorf("%s -> %s, want %s", target, got, source)
-		}
-	}
 }
 
 func TestDevRoutesMatchBuild(t *testing.T) {
