@@ -40,7 +40,6 @@ func runDev(app *App, addr string, port int) error {
 
 func newDev(app *App, configFile, srcFlag, outFlag string) *Dev {
 	dev := &Dev{
-		root:       app.Root,
 		configFile: configFile,
 		srcFlag:    srcFlag,
 		outFlag:    outFlag,
@@ -134,29 +133,29 @@ func (app *App) serveDev(w http.ResponseWriter, r *http.Request) {
 		sitePath = "/" + sitePath
 	}
 
-	if filePath, file, err := app.fileForURL(sitePath); file != nil {
+	filePath, data, err := app.fileForURL(sitePath)
+	switch {
+	case err == nil && isMarkdownFile(filePath) && isWithin(app.SrcDir, filePath):
+		page, err := app.loadPage(filePath)
 		if err != nil {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
 		}
 
-		if isMarkdownFile(filePath) {
-			page, err := app.loadPage(filePath)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-
-			document, err := app.renderPageHTML(page)
-			if err != nil {
-				http.Error(w, err.Error(), http.StatusInternalServerError)
-				return
-			}
-
-		serveBytes(w, r, filePath, document)
+		document, err := app.renderPageHTML(page, data)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
 		}
 
-		serveBytes(w, r, filepath.Base(filePath), file)
-
+		serveBytes(w, r, page.OutPath, document)
+		return
+	case err == nil:
+		serveBytes(w, r, filepath.Base(filePath), data)
+		return
+	case !os.IsNotExist(err):
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
 
 	switch {
@@ -211,43 +210,6 @@ func serveThemeAsset(w http.ResponseWriter, r *http.Request, name string) {
 	}
 
 	serveBytes(w, r, name, data)
-}
-
-func (app *App) serveAssetFile(w http.ResponseWriter, r *http.Request, sitePath, file string) bool {
-	root := app.PublicDir
-	if isWithin(app.SrcDir, file) {
-		root = app.SrcDir
-		if isMarkdownFile(file) || hasHiddenSegment(strings.TrimPrefix(sitePath, "/")) {
-			return false
-		}
-	}
-
-	resolvedRoot, err := filepath.EvalSymlinks(root)
-	if err != nil {
-		return false
-	}
-
-	resolved, err := filepath.EvalSymlinks(file)
-	if err != nil || !isWithin(resolvedRoot, resolved) {
-		return false
-	}
-
-	data, err := os.ReadFile(resolved)
-	if err != nil {
-		return false
-	}
-
-	serveBytes(w, r, sitePath, data)
-	return true
-}
-
-func hasHiddenSegment(relative string) bool {
-	for _, segment := range strings.Split(filepath.ToSlash(relative), "/") {
-		if strings.HasPrefix(segment, ".") {
-			return true
-		}
-	}
-	return false
 }
 
 func serveBytes(w http.ResponseWriter, r *http.Request, name string, data []byte) {

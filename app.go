@@ -7,8 +7,6 @@ import (
 	"path/filepath"
 )
 
-// App is one immutable snapshot of a docs project. Everything a render needs
-// is resolved before the snapshot is published; requests never mutate it.
 type App struct {
 	Config
 
@@ -30,15 +28,13 @@ type App struct {
 	Bootstrap    string
 }
 
-// LoadApp reads one coherent project snapshot. The returned App is fully
-// resolved and must not be modified by callers.
 func LoadApp(projectRoot, configFile, srcFlag, outFlag string) (*App, error) {
-	absoluteRoot, err := filepath.Abs(projectRoot)
+	root, err := filepath.Abs(projectRoot)
 	if err != nil {
-		return nil, fmt.Errorf("project root: %w", err)
+		return nil, err
 	}
 
-	loaded, path, err := loadConfig(absoluteRoot, configFile)
+	loaded, path, err := loadConfig(root, configFile)
 	if err != nil {
 		return nil, err
 	}
@@ -46,12 +42,19 @@ func LoadApp(projectRoot, configFile, srcFlag, outFlag string) (*App, error) {
 
 	app := &App{
 		Config:      loaded,
-		Root:        absoluteRoot,
+		Root:        root,
 		ConfigPath:  path,
-		SrcDir:      loaded.SrcDir,
-		OutDir:      loaded.OutDir,
-		PublicDir:   loaded.PublicDir,
-		SidebarPath: loaded.SidebarFile,
+		SrcDir:      fmtConfigPath(loaded.SrcDir),
+		OutDir:      fmtConfigPath(loaded.OutDir),
+		PublicDir:   fmtConfigPath(loaded.PublicDir),
+		SidebarPath: fmtConfigPath(loaded.SidebarFile),
+	}
+
+	for _, dir := range []*string{&app.SrcDir, &app.OutDir, &app.PublicDir, &app.SidebarPath} {
+		*dir, err = filepath.Abs(*dir)
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	info, err := os.Stat(app.SrcDir)

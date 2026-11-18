@@ -29,7 +29,6 @@ type Config struct {
 	OutDir    string `json:"out_dir"`
 	PublicDir string `json:"public_dir"`
 
-	CleanURLs   bool   `json:"clean_urls"`
 	SiteURL     string `json:"site_url"`
 	SidebarFile string `json:"sidebar_file"`
 	Sitemap     bool   `json:"sitemap"`
@@ -88,7 +87,6 @@ func defaults() Config {
 		SrcDir:      defaultSrcDir,
 		OutDir:      defaultOutDir,
 		PublicDir:   defaultPublicDir,
-		CleanURLs:   true,
 		SidebarFile: defaultSidebarFile,
 		Appearance:  "auto",
 		Outline:     OutlineConfig{Label: "On this page", Level: []int{2, 3}},

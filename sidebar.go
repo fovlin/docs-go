@@ -31,7 +31,6 @@ type SidebarConfig struct {
 type SidebarNode struct {
 	Text      string
 	Href      string
-	Path      string
 	Active    bool
 	HasActive bool
 	Collapsed bool
@@ -129,4 +128,43 @@ func (app *App) matchedSidebar(pageURL string) []*SidebarNode {
 	}
 
 	return nil
+}
+
+func (app *App) sidebarFor(pageURL string) []*SidebarNode {
+	if app.Sidebar == nil {
+		return nil
+	}
+
+	nodes := app.matchedSidebar(pageURL)
+	return app.markSidebar(nodes, pageURL)
+}
+
+func (app *App) markSidebar(nodes []*SidebarNode, pageURL string) []*SidebarNode {
+	if len(nodes) == 0 {
+		return nil
+	}
+
+	marked := make([]*SidebarNode, 0, len(nodes))
+	for _, node := range nodes {
+		clone := *node
+
+		if len(clone.Items) != 0 {
+			clone.Items = app.markSidebar(node.Items, pageURL)
+		}
+
+		clone.Active = node.Href != "" && node.Href == pageURL
+
+		clone.HasActive = false
+		for _, child := range clone.Items {
+			if child.Active || child.HasActive {
+				clone.HasActive = true
+				break
+			}
+		}
+
+		clone.Open = !clone.Collapsed || clone.Active || clone.HasActive
+		marked = append(marked, &clone)
+	}
+
+	return marked
 }

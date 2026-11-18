@@ -69,7 +69,7 @@ defaults. Paths are relative to the project directory.
   {
     "text": "Guide",
     "items": [
-      { "text": "Getting started", "link": "/guide/getting-started/" }
+      { "text": "Getting started", "link": "/guide/getting-started" }
     ]
   }
 ]
@@ -83,7 +83,7 @@ or an object keyed by URL prefix:
     {
       "text": "Guide",
       "items": [
-        { "text": "Getting started", "link": "/guide/getting-started/" }
+        { "text": "Getting started", "link": "/guide/getting-started" }
       ]
     }
   ]

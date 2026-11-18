@@ -6,11 +6,10 @@
   "src_dir": "docs",
   "out_dir": "dist",
   "public_dir": "public",
-  "clean_urls": true,
   "sidebar_file": "config/sidebar.json",
   "logo": "/docs-go.svg",
   "nav": [
-    { "text": "Guide", "link": "/guide/getting-started/" }
+    { "text": "Guide", "link": "/guide/getting-started" }
   ],
   "social_links": [
     { "icon": "github", "link": "https://github.com/fovlin/docs-go", "label": "GitHub" }

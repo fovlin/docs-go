@@ -57,8 +57,7 @@ func TestDevSnapshotSwap(t *testing.T) {
 	}
 
 	writeFile(t, filepath.Join(root, "config/docs.json"), `{
-		"title": "Changed docs",
-		"clean_urls": true
+		"title": "Changed docs"
 	}`)
 
 	reloaded := dev.snapshot()
@@ -93,8 +92,7 @@ func TestDevFailedReloadKeepsPreviousSnapshot(t *testing.T) {
 	}
 
 	writeFile(t, filepath.Join(root, "config/docs.json"), `{
-		"title": "Fixed docs",
-		"clean_urls": true
+		"title": "Fixed docs"
 	}`)
 
 	fixed := dev.snapshot()
@@ -104,16 +102,6 @@ func TestDevFailedReloadKeepsPreviousSnapshot(t *testing.T) {
 	if fixed.Title != "Fixed docs" {
 		t.Fatalf("reloaded title = %q", fixed.Title)
 	}
-}
-
-func plainProject(t *testing.T) *App {
-	t.Helper()
-
-	root := t.TempDir()
-	writeTestProject(t, root)
-	writeFile(t, filepath.Join(root, "config", "docs.json"), `{"title": "Test docs", "clean_urls": false}`)
-
-	return loadTestProject(t, root)
 }
 
 func TestDevRoutesMatchBuild(t *testing.T) {
@@ -131,22 +119,6 @@ func TestDevRoutesMatchBuild(t *testing.T) {
 	} {
 		if got := devGet(t, clean, target).Code; got != want {
 			t.Errorf("clean %s = %d, want %d", target, got, want)
-		}
-	}
-
-	plain := newDev(plainProject(t), "config/docs.json", "", "")
-	for target, want := range map[string]int{
-		"/":                 http.StatusOK,
-		"/guide":            http.StatusOK,
-		"/guide/":           http.StatusOK,
-		"/guide/start.html": http.StatusOK,
-		"/guide/index.html": http.StatusOK,
-		"/guide/start/":     http.StatusNotFound,
-		"/guide/start":      http.StatusNotFound,
-		"/guide/start.md":   http.StatusNotFound,
-	} {
-		if got := devGet(t, plain, target).Code; got != want {
-			t.Errorf("plain %s = %d, want %d", target, got, want)
 		}
 	}
 }

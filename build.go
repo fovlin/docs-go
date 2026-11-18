@@ -73,7 +73,7 @@ func (app *App) buildPage() (int, error) {
 		}
 		seenOut[page.OutPath] = page.SourcePath
 
-		document, err := app.renderPageHTML(page)
+		document, err := app.renderPageHTML(page, nil)
 		if err != nil {
 			return err
 		}

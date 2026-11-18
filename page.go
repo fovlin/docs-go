@@ -1,8 +1,10 @@
 package main
 
 import (
+	"errors"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -18,7 +20,6 @@ type PageLink struct {
 // source H1; the display title lives on RenderState.Title.
 type Page struct {
 	SourcePath  string
-	AbsPath     string
 	URL         string
 	OutPath     string
 	Heading     string
@@ -59,17 +60,27 @@ type RenderState struct {
 	Version    string
 }
 
-func (app *App) loadPage(filePath string) (*Page, error) {
-	info, err := os.Stat(filePath)
+func (app *App) loadPage(fsPath string) (*Page, error) {
+	if !isMarkdownFile(fsPath) {
+		return nil, errors.New(fsPath + " is not a markdown file")
+	}
+
+	absolute, err := filepath.Abs(fsPath)
 	if err != nil {
 		return nil, err
 	}
 
-	url := app.fmtPageURL(filePath)
-	outPath := strings.TrimPrefix(url, "/")
+	info, err := os.Stat(absolute)
+	if err != nil {
+		return nil, err
+	}
+
+	relative := strings.TrimPrefix(filepath.ToSlash(absolute), filepath.ToSlash(app.SrcDir)+"/")
+	source := strings.TrimSuffix(relative, path.Ext(relative))
+	url, outPath := fmtPageURL(source)
 
 	return &Page{
-		SourcePath: filePath,
+		SourcePath: relative,
 		URL:        url,
 		OutPath:    outPath,
 		ModTime:    info.ModTime(),

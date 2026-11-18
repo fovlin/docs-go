@@ -7,13 +7,9 @@ import (
 	"strings"
 )
 
-// ResolveFunc rewrites a link or image destination before it is written.
-// Returning the original value leaves it unchanged.
-type ResolveFunc func(destination string, image bool) string
-
 // Render writes the document as an HTML fragment.
-func (document *Document) Render(resolve ResolveFunc) []byte {
-	renderer := &renderer{resolve: resolve}
+func (document *Document) Render() []byte {
+	renderer := &renderer{}
 	renderer.blocks(document.blocks)
 
 	return []byte(renderer.builder.String())
@@ -21,7 +17,6 @@ func (document *Document) Render(resolve ResolveFunc) []byte {
 
 type renderer struct {
 	builder strings.Builder
-	resolve ResolveFunc
 }
 
 func (r *renderer) blocks(items []block) {
@@ -271,10 +266,6 @@ func (r *renderer) image(item inline) {
 // safeDestination resolves a destination and neutralises unsafe schemes.
 // Links fall back to "#"; images fall back to an empty src.
 func (r *renderer) safeDestination(value string, image bool) string {
-	if r.resolve != nil {
-		value = r.resolve(value, image)
-	}
-
 	if safeURL(value, image) {
 		return value
 	}

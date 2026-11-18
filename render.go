@@ -3,25 +3,27 @@ package main
 import (
 	"fmt"
 	"html"
-	"net/url"
 	"os"
-	"path"
+	"path/filepath"
 	"strings"
 
 	"acovia.net/docs-go/internal/markdown"
 )
 
-func (app *App) parsePage(page *Page) (*markdown.Document, error) {
-	data, err := os.ReadFile(page.AbsPath)
-	if err != nil {
-		return nil, fmt.Errorf("read %s: %w", page.SourcePath, err)
+func (app *App) parsePage(page *Page, data []byte) (*markdown.Document, error) {
+	if data == nil {
+		var err error
+		data, err = os.ReadFile(filepath.Join(app.SrcDir, filepath.FromSlash(page.SourcePath)))
+		if err != nil {
+			return nil, fmt.Errorf("read %s: %w", page.SourcePath, err)
+		}
 	}
 
 	return markdown.Parse(data), nil
 }
 
-func (app *App) renderPageHTML(page *Page) ([]byte, error) {
-	document, err := app.parsePage(page)
+func (app *App) renderPageHTML(page *Page, data []byte) ([]byte, error) {
+	document, err := app.parsePage(page, data)
 	if err != nil {
 		return nil, err
 	}
@@ -39,9 +41,7 @@ func (app *App) renderPageHTML(page *Page) ([]byte, error) {
 	state.Nav = app.navFor(page.URL)
 	state.Sidebar = app.sidebarFor(page.URL)
 	app.applyNavigation(state)
-	state.Body = string(document.Render(func(destination string, image bool) string {
-		return app.resolveDestination(page, destination, image)
-	}))
+	state.Body = string(document.Render())
 	state.Outline = filterOutline(document.Headings, app.Outline.Level)
 	state.EditURL = app.editURL(page)
 	state.LastUpdated = app.lastUpdated(page)
@@ -116,21 +116,6 @@ func (app *App) lastUpdated(page *Page) string {
 	}
 
 	return page.ModTime.Format("2006-01-02")
-}
-
-func (app *App) resolveDestination(page *Page, raw string, _ bool) string {
-	parsed, err := url.Parse(raw)
-	if err != nil || parsed.Scheme != "" || parsed.Host != "" || strings.HasPrefix(raw, "//") || parsed.Path == "" {
-		return raw
-	}
-
-	target := parsed.Path
-	if !strings.HasPrefix(target, "/") {
-		target = path.Join("/", path.Dir(page.SourcePath), target)
-	}
-	target = canonicalURL(target)
-
-	return escapePath(target)
 }
 
 func filterOutline(headings []markdown.Heading, levels []int) []markdown.Heading {
