@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-func (app *App) url(sitePath string) string {
+func escapePath(sitePath string) string {
 	if sitePath == "" {
 		sitePath = "/"
 	}
@@ -63,7 +63,7 @@ func (app *App) resolveConfigLink(raw string) (string, string, bool) {
 		target = markdownFallbackURL(target, app.CleanURLs)
 	}
 
-	return app.url(target) + urlSuffix(parsed), target, false
+	return escapePath(target) + urlSuffix(parsed), target, false
 }
 
 func urlSuffix(parsed *url.URL) string {

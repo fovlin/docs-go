@@ -77,11 +77,11 @@ func (app *App) fillPageChrome(state *RenderState) {
 	state.Title = title
 	state.Lang = app.Lang
 	state.Appearance = app.Appearance
-	state.HomeURL = app.url("/")
-	state.StyleURL = app.url("/assets/style.css") + "?v=" + app.AssetVersion
-	state.InitURL = app.url("/assets/init.js") + "?v=" + app.AssetVersion
-	state.AppURL = app.url("/assets/app.js") + "?v=" + app.AssetVersion
-	state.FaviconURL = app.url("/favicon.ico") + "?v=" + app.AssetVersion
+	state.HomeURL = escapePath("/")
+	state.StyleURL = escapePath("/assets/style.css") + "?v=" + app.AssetVersion
+	state.InitURL = escapePath("/assets/init.js") + "?v=" + app.AssetVersion
+	state.AppURL = escapePath("/assets/app.js") + "?v=" + app.AssetVersion
+	state.FaviconURL = escapePath("/favicon.ico") + "?v=" + app.AssetVersion
 	state.LogoURL = app.publicURL(app.Logo)
 	state.PrevText = app.PrevText
 	state.NextText = app.NextText
@@ -89,7 +89,7 @@ func (app *App) fillPageChrome(state *RenderState) {
 	state.Version = version
 
 	if app.SiteURL != "" {
-		state.Canonical = app.SiteURL + state.URL
+		state.Canonical = strings.TrimSuffix(app.SiteURL, "/") + escapePath(state.URL)
 	}
 	if app.Config.Favicon != "" {
 		state.FaviconURL = app.publicURL(app.Config.Favicon)
@@ -110,7 +110,7 @@ func (app *App) publicURL(value string) string {
 		value = "/" + value
 	}
 
-	return app.url(value)
+	return escapePath(value)
 }
 
 func (app *App) editURL(page *Page) string {
@@ -167,7 +167,7 @@ func (app *App) resolveDestination(page *Page, raw string, image bool) string {
 		record.Warn(fmt.Sprintf("%s references an image that does not exist: %s", page.SourcePath, parsed.Path))
 	}
 
-	return app.url(target) + urlSuffix(parsed)
+	return escapePath(target) + urlSuffix(parsed)
 }
 
 func (app *App) assetExists(sitePath string) bool {
@@ -254,7 +254,7 @@ func (app *App) notFoundPage() *RenderState {
 		`<p class="not-found-code">404</p>` +
 		`<h1>` + html.EscapeString(app.UI.NotFoundTitle) + `</h1>` +
 		`<p>` + html.EscapeString(app.UI.NotFoundText) + `</p>` +
-		`<p><a class="btn btn-primary" href="` + html.EscapeString(app.url("/")) + `">` + html.EscapeString(app.UI.BackHome) + `</a></p>` +
+		`<p><a class="btn btn-primary" href="` + html.EscapeString(escapePath("/")) + `">` + html.EscapeString(app.UI.BackHome) + `</a></p>` +
 		`</div>`,
 	}
 

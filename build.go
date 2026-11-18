@@ -200,7 +200,7 @@ func (app *App) sitemapBytes() ([]byte, error) {
 
 	if err := app.walkPages(func(page *Page) error {
 		builder.WriteString("  <url>\n    <loc>")
-		_ = xml.EscapeText(&builder, []byte(filepath.Join(app.SiteURL, page.URL)))
+		_ = xml.EscapeText(&builder, []byte(strings.TrimSuffix(app.SiteURL, "/")+escapePath(page.URL)))
 		builder.WriteString("</loc>\n")
 		if !page.ModTime.IsZero() {
 			builder.WriteString("    <lastmod>")
