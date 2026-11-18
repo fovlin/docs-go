@@ -41,6 +41,7 @@ Every field is optional; missing fields use defaults.
 | `src_dir` | `docs` | Markdown and asset source directory. |
 | `out_dir` | `dist` | Build output directory. |
 | `public_dir` | `public` | Files copied to the output root. |
+| `clean_urls` | `true` | Write non-index pages as `<name>/index.html` and link them without `.html`. With `false` pages are `<name>.html` and URLs keep `.html`. |
 | `sidebar_file` | `config/sidebar.json` | Sidebar file, relative to the project. |
 | `site_url` | empty | Absolute URL used for canonical links and the sitemap. |
 | `sitemap` | `false` | Write `sitemap.xml`; requires `site_url`. |

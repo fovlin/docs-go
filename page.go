@@ -77,7 +77,7 @@ func (app *App) loadPage(fsPath string) (*Page, error) {
 
 	relative := strings.TrimPrefix(filepath.ToSlash(absolute), filepath.ToSlash(app.SrcDir)+"/")
 	source := strings.TrimSuffix(relative, path.Ext(relative))
-	url, outPath := fmtPageURL(source)
+	url, outPath := app.fmtPageURL(source)
 
 	return &Page{
 		SourcePath: relative,

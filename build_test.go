@@ -35,7 +35,8 @@ func writeTestProject(t *testing.T, root string) {
 	t.Helper()
 
 	writeFile(t, filepath.Join(root, "config/docs.json"), `{
-		"title": "Test docs"
+		"title": "Test docs",
+		"clean_urls": true
 	}`)
 	writeFile(t, filepath.Join(root, "config/sidebar.json"), `{
 		"/guide/": [{
@@ -86,6 +87,39 @@ func TestBuild(t *testing.T) {
 		if !strings.Contains(page, want) {
 			t.Errorf("missing %q in start page", want)
 		}
+	}
+}
+
+func TestBuildWithoutCleanURLs(t *testing.T) {
+	root := t.TempDir()
+	writeTestProject(t, root)
+	writeFile(t, filepath.Join(root, "config", "docs.json"), `{"title": "Test docs", "clean_urls": false}`)
+	writeFile(t, filepath.Join(root, "config/sidebar.json"), `{
+		"/guide/": [{
+			"text": "Guide",
+			"items": [
+				{ "text": "Overview", "link": "/guide" },
+				{ "text": "Start", "link": "/guide/start.html" },
+				{ "text": "Next", "link": "/guide/next.html" }
+			]
+		}]
+	}`)
+	app := loadTestProject(t, root)
+
+	if err := runBuild(app); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := os.Stat(filepath.Join(root, "dist", "guide", "start.html")); err != nil {
+		t.Fatalf("missing flat page: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(root, "dist", "guide", "start")); !os.IsNotExist(err) {
+		t.Fatalf("unexpected folder page: %v", err)
+	}
+
+	page := readFile(t, filepath.Join(root, "dist", "guide", "start.html"))
+	if !strings.Contains(page, `prev-next-link next" href="/guide/next.html"`) {
+		t.Fatal("prev/next link was not written with .html")
 	}
 }
 

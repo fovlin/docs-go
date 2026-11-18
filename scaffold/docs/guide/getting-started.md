@@ -12,7 +12,7 @@ Every `.md` file under `docs/` becomes a page:
 | `docs/guide/index.md` | `/guide` |
 | `docs/guide/getting-started.md` | `/guide/getting-started` |
 
-Each non-index page is written to `guide/getting-started/index.html`; its URL is `/guide/getting-started`.
+With `clean_urls` enabled each non-index page is written to `guide/getting-started/index.html` and its URL is `/guide/getting-started`. Set `"clean_urls": false` to write `guide/getting-started.html` instead.
 
 ## Build the site
 
@@ -49,4 +49,4 @@ Create `docs/guide/my-page.md`, then add it to `config/sidebar.json`:
 }
 ~~~
 
-Links are used exactly as written, so point them at the URL the build emits, for example `/guide/my-page`. URLs never end with a slash.
+Links are used exactly as written, so point them at the URL the build emits: `/guide/my-page` with clean URLs, `/guide/my-page.html` without. Neither form ends with a slash.

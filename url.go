@@ -38,7 +38,7 @@ func (app *App) applyNavigation(state *RenderState) {
 	}
 }
 
-func fmtURL(source string) string {
+func (app *App) fmtURL(source string) string {
 	source = strings.TrimPrefix(path.Clean("/"+source), "/")
 
 	switch {
@@ -46,18 +46,21 @@ func fmtURL(source string) string {
 		return "/"
 	case strings.HasSuffix(source, "/index"):
 		return "/" + strings.TrimSuffix(source, "/index")
-	default:
+	case app.CleanURLs:
 		return "/" + source
+	default:
+		return "/" + source + ".html"
 	}
 }
 
-func fmtPageURL(source string) (string, string) {
-	url := fmtURL(source)
+func (app *App) fmtPageURL(source string) (string, string) {
+	url := app.fmtURL(source)
 	outPath := strings.TrimPrefix(url, "/")
 
-	if outPath == "" {
+	switch {
+	case outPath == "":
 		outPath = "index.html"
-	} else {
+	case app.CleanURLs || strings.HasSuffix(source, "/index"):
 		outPath += "/index.html"
 	}
 
@@ -83,8 +86,12 @@ func (app *App) fileForURL(sitePath string) (string, []byte, error) {
 	case strings.HasSuffix(relative, "/index.html"):
 		dir := strings.TrimSuffix(relative, "/index.html")
 		bases = append(bases, dir+"/index", dir)
-	default:
+	case app.CleanURLs:
 		bases = append(bases, relative+"/index", relative)
+	case strings.HasSuffix(strings.ToLower(relative), ".html"):
+		bases = append(bases, relative[:len(relative)-len(".html")])
+	default:
+		bases = append(bases, relative+"/index")
 	}
 
 	for _, base := range bases {
