@@ -14,7 +14,6 @@ Every field is optional; missing fields use defaults.
   "title": "My Docs",
   "description": "Documentation for my project.",
   "lang": "en",
-  "base": "/",
   "src_dir": "docs",
   "out_dir": "dist",
   "public_dir": "public",
@@ -40,7 +39,6 @@ Every field is optional; missing fields use defaults.
 | `title` | `DOCS_GO` | Site title. |
 | `description` | `Documentation built with docs-go.` | Default meta description. |
 | `lang` | `en` | Document language. |
-| `base` | `/` | URL base path; it is normalized with a trailing slash. |
 | `src_dir` | `docs` | Markdown and asset source directory. |
 | `out_dir` | `dist` | Build output directory. |
 | `public_dir` | `public` | Files copied to the output root. |

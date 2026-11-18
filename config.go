@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"net/url"
 	"os"
-	"path"
 	"path/filepath"
 	"strings"
 )
@@ -25,7 +24,6 @@ type Config struct {
 	Title       string `json:"title"`
 	Description string `json:"description"`
 	Lang        string `json:"lang"`
-	Base        string `json:"base"`
 
 	SrcDir    string `json:"src_dir"`
 	OutDir    string `json:"out_dir"`
@@ -87,7 +85,6 @@ func defaults() Config {
 		Title:       defaultTitle,
 		Description: defaultDescription,
 		Lang:        defaultLang,
-		Base:        "/",
 		SrcDir:      defaultSrcDir,
 		OutDir:      defaultOutDir,
 		PublicDir:   defaultPublicDir,
@@ -159,7 +156,6 @@ func (config *Config) normalize() {
 	config.PublicDir = firstNonEmpty(config.PublicDir, defaultPublicDir)
 	config.SidebarFile = firstNonEmpty(config.SidebarFile, defaultSidebarFile)
 
-	config.Base = normalizeBase(config.Base)
 	config.SiteURL = strings.TrimSpace(config.SiteURL)
 	config.Logo = strings.TrimSpace(config.Logo)
 	config.Favicon = strings.TrimSpace(config.Favicon)
@@ -179,10 +175,6 @@ func (config *Config) normalize() {
 }
 
 func (config Config) validate() error {
-	if strings.Contains(config.Base, "..") || strings.ContainsAny(config.Base, "?#") {
-		return fmt.Errorf("base must be a plain path such as / or /docs/")
-	}
-
 	if config.SiteURL != "" {
 		parsed, err := url.Parse(config.SiteURL)
 		if err != nil || parsed.Scheme == "" || parsed.Host == "" {
@@ -224,25 +216,6 @@ func normalizeLevels(levels []int) []int {
 		return []int{2, 3}
 	}
 	return filtered
-}
-
-func normalizeBase(value string) string {
-	value = strings.TrimSpace(value)
-	if value == "" {
-		return "/"
-	}
-	if !strings.HasPrefix(value, "/") {
-		value = "/" + value
-	}
-
-	value = path.Clean(value)
-	if value == "." {
-		return "/"
-	}
-	if !strings.HasSuffix(value, "/") {
-		value += "/"
-	}
-	return value
 }
 
 func firstNonEmpty(value string, fallback string) string {

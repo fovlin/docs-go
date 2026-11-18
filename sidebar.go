@@ -40,7 +40,7 @@ type SidebarNode struct {
 	Items     []*SidebarNode
 }
 
-func loadSidebar(file string, base string) (*SidebarConfig, error) {
+func loadSidebar(file string) (*SidebarConfig, error) {
 	config := &SidebarConfig{
 		Sections: make(map[string][]SidebarItem),
 		file:     file,
@@ -78,7 +78,7 @@ func loadSidebar(file string, base string) (*SidebarConfig, error) {
 	}
 
 	for key, items := range raw {
-		prefix := normalizeSidebarPrefix(key, base)
+		prefix := normalizeSidebarPrefix(key)
 		if _, exists := config.Sections[prefix]; exists {
 			return nil, fmt.Errorf("sidebar prefix %s is defined more than once", prefix)
 		}
@@ -105,16 +105,12 @@ func sidebarPrefixMatches(prefix string, pageURL string) bool {
 	return strings.HasPrefix(pageURL, strings.TrimSuffix(prefix, "/")+"/")
 }
 
-func normalizeSidebarPrefix(key string, base string) string {
+func normalizeSidebarPrefix(key string) string {
 	key = strings.TrimSpace(key)
 	if key == "" {
 		return "/"
 	}
 
-	if base != "/" && strings.HasPrefix(key, base) {
-		key = strings.TrimPrefix(key, base)
-		key = "/" + strings.TrimPrefix(key, "/")
-	}
 	if !strings.HasPrefix(key, "/") {
 		key = "/" + key
 	}

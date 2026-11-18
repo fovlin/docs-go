@@ -78,14 +78,14 @@ func runInit(root string, force bool, configName string) error {
 		return fmt.Errorf("create public: %w", err)
 	}
 	relative, err := filepath.Rel("./", root)
-	record.Info("initialized %s", relative)
+	record.Info(fmt.Sprintf("initialized %s", relative))
 	for _, name := range created {
-		record.Info("  create  %s\n", name)
+		record.Info(fmt.Sprintf("  create  %s\n", name))
 	}
 	for _, name := range kept {
-		record.Info("  keep    %s\n", name)
+		record.Info(fmt.Sprintf("  keep    %s\n", name))
 	}
-	record.Info("\nnext:\n  cd %s\n  docs-go dev\n", relative)
+	record.Info(fmt.Sprintf("\nnext:\n  cd %s\n  docs-go dev\n", relative))
 
 	return nil
 }

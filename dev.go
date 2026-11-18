@@ -65,7 +65,7 @@ func (dev *Dev) run(addr string, port int) error {
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 
-	record.Info("dev server: http://%s", server.Addr)
+	record.Info(fmt.Sprintf("dev server: http://%s", server.Addr))
 
 	return server.ListenAndServe()
 }
@@ -115,7 +115,7 @@ func (dev *Dev) snapshot() *App {
 
 	reloaded, err := LoadApp(dev.root, dev.configFile, dev.srcFlag, dev.outFlag)
 	if err != nil {
-		record.Info("reload: %v", err)
+		record.Info(fmt.Sprintf("reload: %v", err))
 		// Remember the failed stamps so an unchanged broken config is not
 		// retried on every request; any later edit triggers a reload again.
 		dev.stamps.Store(&devStamps{config: configStamp, sidebar: sidebarStamp, src: srcStamp})
@@ -133,20 +133,7 @@ func (dev *Dev) snapshot() *App {
 }
 
 func (app *App) serveDev(w http.ResponseWriter, r *http.Request) {
-	if app.Base != "/" && r.URL.Path == strings.TrimSuffix(app.Base, "/") {
-		target := app.Base
-		if r.URL.RawQuery != "" {
-			target += "?" + r.URL.RawQuery
-		}
-		http.Redirect(w, r, target, http.StatusMovedPermanently)
-		return
-	}
-
-	sitePath := strings.TrimPrefix(r.URL.Path, app.Base)
-	if sitePath == r.URL.Path && app.Base != "/" {
-		http.NotFound(w, r)
-		return
-	}
+	sitePath := r.URL.Path
 
 	if !strings.HasPrefix(sitePath, "/") {
 		sitePath = "/" + sitePath
@@ -185,7 +172,7 @@ func (app *App) serveDev(w http.ResponseWriter, r *http.Request) {
 
 		document, err := app.renderPageHTML(page)
 		if err != nil {
-			record.Info("render %s: %v", page.SourcePath, err)
+			record.Info(fmt.Sprintf("render %s: %v", page.SourcePath, err))
 			http.Error(w, "internal server error", http.StatusInternalServerError)
 			return
 		}

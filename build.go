@@ -57,8 +57,8 @@ func runBuild(app *App) error {
 		}
 	}
 
-	record.Info("built %d pages in %s", count, time.Since(start).Round(time.Millisecond))
-	record.Info("output: %s", app.OutDir)
+	record.Info(fmt.Sprintf("built %d pages in %s", count, time.Since(start).Round(time.Millisecond)))
+	record.Info(fmt.Sprintf("output: %s", app.OutDir))
 
 	return nil
 }

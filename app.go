@@ -82,7 +82,7 @@ func LoadApp(projectRoot, configFile, srcFlag, outFlag string) (*App, error) {
 		return nil, fmt.Errorf("source directory is not a directory: %s", app.SrcDir)
 	}
 
-	app.Sidebar, err = loadSidebar(app.SidebarPath, app.Base)
+	app.Sidebar, err = loadSidebar(app.SidebarPath)
 	if err != nil {
 		return nil, err
 	}

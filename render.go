@@ -156,7 +156,7 @@ func (app *App) resolveDestination(page *Page, raw string, image bool) string {
 		if linked := app.findPageBySource(strings.TrimPrefix(target, "/")); linked != nil {
 			target = linked.URL
 		} else {
-			record.Warn("%s links to a page that does not exist: %s", page.SourcePath, parsed.Path)
+			record.Warn(fmt.Sprintf("%s links to a page that does not exist: %s", page.SourcePath, parsed.Path))
 			target = markdownFallbackURL(target, app.CleanURLs)
 		}
 	} else if !image {
@@ -164,7 +164,7 @@ func (app *App) resolveDestination(page *Page, raw string, image bool) string {
 			target = linked.URL
 		}
 	} else if !app.assetExists(target) {
-		record.Warn("%s references an image that does not exist: %s", page.SourcePath, parsed.Path)
+		record.Warn(fmt.Sprintf("%s references an image that does not exist: %s", page.SourcePath, parsed.Path))
 	}
 
 	return app.url(target) + urlSuffix(parsed)

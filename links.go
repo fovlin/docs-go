@@ -15,12 +15,7 @@ func (app *App) url(sitePath string) string {
 		sitePath = "/" + sitePath
 	}
 
-	escaped := (&url.URL{Path: sitePath}).EscapedPath()
-	if app.Base == "/" {
-		return escaped
-	}
-
-	return strings.TrimSuffix(app.Base, "/") + escaped
+	return (&url.URL{Path: sitePath}).EscapedPath()
 }
 
 func canonicalURL(target string) string {

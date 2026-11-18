@@ -36,7 +36,7 @@ func (app *App) resolveNav() []*NavLink {
 		}
 
 		if !external && sitePath != "" && strings.TrimSpace(item.ActiveMatch) != "" {
-			link.ActiveMatch = normalizeSidebarPrefix(item.ActiveMatch, app.Base)
+			link.ActiveMatch = normalizeSidebarPrefix(item.ActiveMatch)
 		}
 
 		links = append(links, link)
