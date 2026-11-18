@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"sync"
 )
 
 // App is one immutable snapshot of a docs project. Everything a render needs
@@ -29,22 +28,6 @@ type App struct {
 	Favicon      []byte
 	AssetVersion string
 	Bootstrap    string
-
-	Documents *DocumentCache
-
-	lookupMu    sync.Mutex
-	sourceCache map[string]string
-	assetCache  map[string]bool
-}
-
-// clearLookups drops per-request negative/positive lookup results. Dev calls
-// this before serving so newly created or deleted source files are visible
-// without rebuilding the whole snapshot.
-func (app *App) clearLookups() {
-	app.lookupMu.Lock()
-	app.sourceCache = make(map[string]string)
-	app.assetCache = make(map[string]bool)
-	app.lookupMu.Unlock()
 }
 
 // LoadApp reads one coherent project snapshot. The returned App is fully
@@ -69,9 +52,6 @@ func LoadApp(projectRoot, configFile, srcFlag, outFlag string) (*App, error) {
 		OutDir:      resolveConfigPath(absoluteRoot, loaded.OutDir),
 		PublicDir:   resolveConfigPath(absoluteRoot, loaded.PublicDir),
 		SidebarPath: resolveConfigPath(absoluteRoot, loaded.SidebarFile),
-		Documents:   newDocumentCache(),
-		sourceCache: make(map[string]string),
-		assetCache:  make(map[string]bool),
 	}
 
 	info, err := os.Stat(app.SrcDir)

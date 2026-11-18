@@ -6,32 +6,18 @@ import (
 	"net/url"
 	"os"
 	"path"
-	"path/filepath"
 	"strings"
 
 	"acovia.net/docs-go/internal/markdown"
-	"acovia.net/docs-go/internal/record"
 )
 
 func (app *App) parsePage(page *Page) (*markdown.Document, error) {
-	info, statErr := os.Stat(page.AbsPath)
-	if statErr == nil {
-		if document, ok := app.Documents.lookup(page.AbsPath, info.ModTime().UnixNano(), info.Size()); ok {
-			return document, nil
-		}
-	}
-
 	data, err := os.ReadFile(page.AbsPath)
 	if err != nil {
 		return nil, fmt.Errorf("read %s: %w", page.SourcePath, err)
 	}
 
-	document := markdown.Parse(data)
-	if statErr == nil {
-		app.Documents.store(page.AbsPath, document, info.ModTime().UnixNano(), info.Size())
-	}
-
-	return document, nil
+	return markdown.Parse(data), nil
 }
 
 func (app *App) renderPageHTML(page *Page) ([]byte, error) {
@@ -118,8 +104,8 @@ func (app *App) editURL(page *Page) string {
 		return ""
 	}
 
-	result := strings.ReplaceAll(app.EditLink, ":path", page.SourcePath)
-	result = strings.ReplaceAll(result, ":url", page.URL)
+	result := strings.ReplaceAll(app.EditLink, ":path", strings.TrimPrefix(escapePath(page.SourcePath), "/"))
+	result = strings.ReplaceAll(result, ":url", escapePath(page.URL))
 
 	return result
 }
@@ -132,89 +118,19 @@ func (app *App) lastUpdated(page *Page) string {
 	return page.ModTime.Format("2006-01-02")
 }
 
-func (app *App) resolveDestination(page *Page, raw string, image bool) string {
+func (app *App) resolveDestination(page *Page, raw string, _ bool) string {
 	parsed, err := url.Parse(raw)
-	if err != nil {
-		return raw
-	}
-
-	if parsed.Scheme != "" || parsed.Host != "" || strings.HasPrefix(raw, "//") {
-		return raw
-	}
-
-	if parsed.Path == "" {
+	if err != nil || parsed.Scheme != "" || parsed.Host != "" || strings.HasPrefix(raw, "//") || parsed.Path == "" {
 		return raw
 	}
 
 	target := parsed.Path
 	if !strings.HasPrefix(target, "/") {
-		target = path.Join(path.Dir(page.URL), target)
+		target = path.Join("/", path.Dir(page.SourcePath), target)
 	}
 	target = canonicalURL(target)
 
-	if isMarkdownPath(target) {
-		if linked := app.findPageBySource(strings.TrimPrefix(target, "/")); linked != nil {
-			target = linked.URL
-		} else {
-			record.Warn(fmt.Sprintf("%s links to a page that does not exist: %s", page.SourcePath, parsed.Path))
-			target = markdownFallbackURL(target, app.CleanURLs)
-		}
-	} else if !image {
-		if linked := app.findPageByURL(target); linked != nil {
-			target = linked.URL
-		}
-	} else if !app.assetExists(target) {
-		record.Warn(fmt.Sprintf("%s references an image that does not exist: %s", page.SourcePath, parsed.Path))
-	}
-
 	return escapePath(target) + urlSuffix(parsed)
-}
-
-func (app *App) assetExists(sitePath string) bool {
-	relative := strings.TrimPrefix(sitePath, "/")
-	if relative == "" {
-		return false
-	}
-
-	app.lookupMu.Lock()
-	exists, cached := app.assetCache[relative]
-	app.lookupMu.Unlock()
-	if cached {
-		return exists
-	}
-
-	for _, directory := range []string{app.SrcDir, app.PublicDir} {
-		info, err := os.Stat(filepath.Join(directory, filepath.FromSlash(relative)))
-		if err == nil && !info.IsDir() {
-			app.lookupMu.Lock()
-			app.assetCache[relative] = true
-			app.lookupMu.Unlock()
-			return true
-		}
-	}
-
-	app.lookupMu.Lock()
-	app.assetCache[relative] = false
-	app.lookupMu.Unlock()
-	return false
-}
-
-func isMarkdownPath(value string) bool {
-	extension := strings.ToLower(path.Ext(value))
-	return extension == ".md" || extension == ".markdown"
-}
-
-func markdownFallbackURL(value string, cleanURLs bool) string {
-	extension := strings.ToLower(path.Ext(value))
-	if extension != ".md" && extension != ".markdown" {
-		return value
-	}
-
-	if cleanURLs {
-		return strings.TrimSuffix(value, path.Ext(value))
-	}
-
-	return strings.TrimSuffix(value, path.Ext(value)) + ".html"
 }
 
 func filterOutline(headings []markdown.Heading, levels []int) []markdown.Heading {

@@ -25,5 +25,5 @@ docs-go dev      # render on demand and preview on :7280
 
 ## Next steps
 
-- [Getting started](/guide/getting-started)
-- [Configuration](/guide/configuration)
+- [Getting started](/guide/getting-started/)
+- [Configuration](/guide/configuration/)

@@ -60,8 +60,16 @@ type RenderState struct {
 	Version    string
 }
 
-func pageURL(sourcePath string, cleanURLs bool) string {
-	relative := strings.TrimSuffix(sourcePath, path.Ext(sourcePath))
+// urlForFile maps a source file under SrcDir to its site URL path. The result
+// is unescaped; escapePath is applied only when writing HTML.
+func (app *App) urlForFile(filePath string) string {
+	relative, err := filepath.Rel(app.SrcDir, filePath)
+	if err != nil {
+		return "/"
+	}
+
+	relative = filepath.ToSlash(relative)
+	relative = strings.TrimSuffix(relative, path.Ext(relative))
 	relative = strings.TrimPrefix(path.Clean("/"+relative), "/")
 
 	switch {
@@ -69,61 +77,46 @@ func pageURL(sourcePath string, cleanURLs bool) string {
 		return "/"
 	case strings.HasSuffix(relative, "/index"):
 		return "/" + strings.TrimSuffix(relative, "index")
-	case cleanURLs:
-		return "/" + relative
+	case app.CleanURLs:
+		return "/" + relative + "/"
 	default:
 		return "/" + relative + ".html"
 	}
 }
 
-func pageOutPath(sourcePath string) string {
-	relative := strings.TrimSuffix(sourcePath, path.Ext(sourcePath))
-	relative = strings.TrimPrefix(path.Clean("/"+relative), "/")
-
-	if relative == "" || relative == "index" {
-		return "index.html"
+func (app *App) loadPage(filePath string) (*Page, error) {
+	absolute, err := filepath.Abs(filePath)
+	if err != nil {
+		return nil, err
 	}
 
-	return relative + ".html"
-}
-
-func (app *App) loadPage(relative string) (*Page, error) {
-	absolute := filepath.Join(app.SrcDir, filepath.FromSlash(relative))
 	info, err := os.Stat(absolute)
 	if err != nil {
 		return nil, err
 	}
 
-	page := &Page{
+	relative, err := filepath.Rel(app.SrcDir, absolute)
+	if err != nil {
+		return nil, err
+	}
+	relative = filepath.ToSlash(relative)
+
+	url := app.urlForFile(absolute)
+	outPath := strings.TrimPrefix(url, "/")
+	switch {
+	case outPath == "" || strings.HasSuffix(url, "/"):
+		outPath += "index.html"
+	case !strings.HasSuffix(outPath, ".html"):
+		outPath += ".html"
+	}
+
+	return &Page{
 		SourcePath: relative,
 		AbsPath:    absolute,
-		URL:        pageURL(relative, app.CleanURLs),
-		OutPath:    pageOutPath(relative),
+		URL:        url,
+		OutPath:    outPath,
 		ModTime:    info.ModTime(),
-	}
-
-	return page, nil
-}
-
-func (app *App) pageTitle(sitePath string) string {
-	if page := app.findPageByURL(sitePath); page != nil {
-		return app.titleFor(page)
-	}
-
-	if page := app.findPageBySource(strings.TrimPrefix(sitePath, "/")); page != nil {
-		return app.titleFor(page)
-	}
-
-	return humanizeTitle(strings.TrimSuffix(sitePath, "/"))
-}
-
-func (app *App) titleFor(page *Page) string {
-	document, err := app.parsePage(page)
-	if err == nil && document.FirstH1 != "" {
-		return document.FirstH1
-	}
-
-	return humanizeTitle(page.SourcePath)
+	}, nil
 }
 
 func humanizeTitle(sourcePath string) string {

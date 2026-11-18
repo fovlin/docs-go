@@ -56,7 +56,7 @@ func (app *App) navFor(pageURL string) []*NavLink {
 	for _, link := range app.Nav {
 		clone := *link
 		if clone.Text == "" && clone.Path != "" {
-			clone.Text = app.pageTitle(clone.Path)
+			clone.Text = humanizeTitle(strings.TrimSuffix(clone.Path, "/"))
 		}
 		if !clone.External && clone.Path != "" {
 			if clone.ActiveMatch != "" {
@@ -170,7 +170,7 @@ func (app *App) markSidebar(nodes []*SidebarNode, pageURL string) []*SidebarNode
 
 		if clone.Text == "" {
 			if clone.Path != "" {
-				clone.Text = app.pageTitle(clone.Path)
+				clone.Text = humanizeTitle(strings.TrimSuffix(clone.Path, "/"))
 			} else if clone.External {
 				clone.Text = clone.Href
 			} else if len(clone.Items) > 0 {

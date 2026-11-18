@@ -4,12 +4,18 @@
 	var KEY = "docs-go-theme";
 	var root = document.documentElement;
 	var appearance = root.getAttribute("data-appearance") || "auto";
-	var stored = null;
 
-	try {
-		stored = localStorage.getItem(KEY);
-	} catch (error) {
-		stored = null;
+	function storedTheme() {
+		try {
+			var value = localStorage.getItem(KEY);
+			if (value === "light" || value === "dark") {
+				return value;
+			}
+		} catch (error) {
+			/* ignore */
+		}
+
+		return "";
 	}
 
 	function systemTheme() {
@@ -21,7 +27,8 @@
 	}
 
 	function preferredTheme() {
-		if (stored === "light" || stored === "dark") {
+		var stored = storedTheme();
+		if (stored) {
 			return stored;
 		}
 
@@ -30,10 +37,6 @@
 		}
 
 		return "";
-	}
-
-	function currentTheme() {
-		return preferredTheme() || systemTheme();
 	}
 
 	function applyTheme() {
@@ -47,7 +50,7 @@
 
 		var meta = document.querySelector('meta[name="theme-color"]');
 		if (meta) {
-			meta.setAttribute("content", currentTheme() === "dark" ? "#101010" : "#ffffff");
+			meta.setAttribute("content", (theme || systemTheme()) === "dark" ? "#101010" : "#ffffff");
 		}
 	}
 
@@ -64,12 +67,6 @@
 	window.addEventListener("storage", function (event) {
 		if (event.key !== null && event.key !== KEY) {
 			return;
-		}
-
-		try {
-			stored = localStorage.getItem(KEY);
-		} catch (error) {
-			stored = null;
 		}
 
 		applyTheme();

@@ -41,8 +41,8 @@ func writeTestProject(t *testing.T, root string) {
 			"text": "Guide",
 			"items": [
 				{ "text": "Overview", "link": "/guide/" },
-				{ "text": "Start", "link": "/guide/start" },
-				{ "text": "Next", "link": "/guide/next" }
+				{ "text": "Start", "link": "/guide/start/" },
+				{ "text": "Next", "link": "/guide/next/" }
 			]
 		}]
 	}`)
@@ -64,8 +64,8 @@ func TestBuild(t *testing.T) {
 	for _, name := range []string{
 		"index.html",
 		"guide/index.html",
-		"guide/start.html",
-		"guide/next.html",
+		"guide/start/index.html",
+		"guide/next/index.html",
 		"404.html",
 		"favicon.ico",
 		"assets/style.css",
@@ -75,7 +75,7 @@ func TestBuild(t *testing.T) {
 		}
 	}
 
-	page := readFile(t, filepath.Join(root, "dist", "guide", "start.html"))
+	page := readFile(t, filepath.Join(root, "dist", "guide", "start", "index.html"))
 	for _, want := range []string{
 		`<title>Start | Test docs</title>`,
 		`<h2 id="details">`,
@@ -88,18 +88,51 @@ func TestBuild(t *testing.T) {
 	}
 }
 
+func TestBuildWithoutCleanURLs(t *testing.T) {
+	root := t.TempDir()
+	writeTestProject(t, root)
+	writeFile(t, filepath.Join(root, "config", "docs.json"), `{"title": "Test docs", "clean_urls": false}`)
+	writeFile(t, filepath.Join(root, "config/sidebar.json"), `{
+		"/guide/": [{
+			"text": "Guide",
+			"items": [
+				{ "text": "Overview", "link": "/guide/" },
+				{ "text": "Start", "link": "/guide/start.html" },
+				{ "text": "Next", "link": "/guide/next.html" }
+			]
+		}]
+	}`)
+	app := loadTestProject(t, root)
+
+	if err := runBuild(app); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := os.Stat(filepath.Join(root, "dist", "guide", "start.html")); err != nil {
+		t.Fatalf("missing flat page: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(root, "dist", "guide", "start")); !os.IsNotExist(err) {
+		t.Fatalf("unexpected folder page: %v", err)
+	}
+
+	page := readFile(t, filepath.Join(root, "dist", "guide", "start.html"))
+	if !strings.Contains(page, `prev-next-link next" href="/guide/next.html"`) {
+		t.Fatal("prev/next link was not written with .html")
+	}
+}
+
 func TestAppPrevNext(t *testing.T) {
 	root := t.TempDir()
 	writeTestProject(t, root)
 	app := loadTestProject(t, root)
 
-	page := mustPage(t, app, "/guide/start")
+	page := mustPage(t, app, "guide/start.md")
 	state := &RenderState{Page: page, Sidebar: app.sidebarFor(page.URL)}
 	app.applyNavigation(state)
 	if state.Prev == nil || state.Prev.Text != "Overview" || state.Prev.Href != "/guide/" {
 		t.Errorf("prev = %+v", state.Prev)
 	}
-	if state.Next == nil || state.Next.Text != "Next" || state.Next.Href != "/guide/next" {
+	if state.Next == nil || state.Next.Text != "Next" || state.Next.Href != "/guide/next/" {
 		t.Errorf("next = %+v", state.Next)
 	}
 }
@@ -117,14 +150,14 @@ func TestNavigationIsPreResolved(t *testing.T) {
 	if len(tree) != 1 || len(tree[0].Items) != 3 {
 		t.Fatalf("unexpected resolved sidebar tree: %+v", tree)
 	}
-	if tree[0].Items[1].Href != "/guide/start" {
+	if tree[0].Items[1].Href != "/guide/start/" {
 		t.Errorf("resolved href = %q", tree[0].Items[1].Href)
 	}
 	if tree[0].HasActive {
 		t.Fatal("stored sidebar tree was mutated before rendering")
 	}
 
-	active := app.sidebarFor("/guide/start")
+	active := app.sidebarFor("/guide/start/")
 	if len(active) != 1 || !active[0].HasActive || !active[0].Open {
 		t.Fatalf("active sidebar state = %+v", active)
 	}
@@ -136,12 +169,37 @@ func TestNavigationIsPreResolved(t *testing.T) {
 	}
 }
 
+func TestSidebarMainNavIsList(t *testing.T) {
+	state := &RenderState{
+		Page: &Page{},
+		Nav: []*NavLink{
+			{Text: "Guide", Href: "/guide/"},
+			{Text: "API", Href: "https://example.com", External: true},
+		},
+		UI: UIConfig{Menu: "Menu"},
+	}
+
+	html := sidebarHTML(state)
+
+	if !strings.Contains(html, `<ul class="mobile-nav-list">`) {
+		t.Fatalf("main nav is not a list: %s", html)
+	}
+
+	if !strings.Contains(html, `<li class="mobile-nav-entry"><a class="mobile-nav-link" href="/guide/">Guide</a></li>`) {
+		t.Fatalf("main nav link markup = %s", html)
+	}
+
+	if !strings.Contains(html, `target="_blank" rel="noopener">API</a></li>`) {
+		t.Fatalf("external main nav link markup = %s", html)
+	}
+}
+
 func TestPageHeadingAndDisplayTitle(t *testing.T) {
 	root := t.TempDir()
 	writeTestProject(t, root)
 	app := loadTestProject(t, root)
 
-	page := mustPage(t, app, "/guide/start")
+	page := mustPage(t, app, "guide/start.md")
 	if page.Heading != "" {
 		t.Fatalf("heading should be empty before render, got %q", page.Heading)
 	}
@@ -157,7 +215,7 @@ func TestPageHeadingAndDisplayTitle(t *testing.T) {
 		t.Errorf("display title = %q, want %q", titleOf(t, string(document)), "Start | Test docs")
 	}
 
-	home := mustPage(t, app, "/")
+	home := mustPage(t, app, "index.md")
 	homeDocument, err := app.renderPageHTML(home)
 	if err != nil {
 		t.Fatal(err)
@@ -179,62 +237,12 @@ func TestPageHeadingAndDisplayTitle(t *testing.T) {
 	}
 }
 
-func TestDocumentCacheInvalidatesOnChange(t *testing.T) {
-	root := t.TempDir()
-	writeTestProject(t, root)
-	app := loadTestProject(t, root)
-
-	page := mustPage(t, app, "/guide/start")
-	if title := app.titleFor(page); title != "Start" {
-		t.Fatalf("initial title = %q", title)
-	}
-
-	writeFile(t, filepath.Join(root, "docs", "guide", "start.md"), "# Changed\n\nNew body.\n")
-
-	changed := mustPage(t, app, "/guide/start")
-	document, err := app.parsePage(changed)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if document.FirstH1 != "Changed" {
-		t.Fatalf("cached document after edit = %q", document.FirstH1)
-	}
-
-	if title := app.titleFor(changed); title != "Changed" {
-		t.Fatalf("cached title after edit = %q", title)
-	}
-}
-
-func TestDocumentCacheSharedByTitleAndRender(t *testing.T) {
-	root := t.TempDir()
-	writeTestProject(t, root)
-	app := loadTestProject(t, root)
-
-	page := mustPage(t, app, "/guide/start")
-	if title := app.titleFor(page); title != "Start" {
-		t.Fatalf("title = %q", title)
-	}
-
-	first, err := app.parsePage(page)
-	if err != nil {
-		t.Fatal(err)
-	}
-	second, err := app.parsePage(page)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if first != second {
-		t.Fatal("parsePage did not reuse the document cached by titleFor")
-	}
-}
-
-func mustPage(t *testing.T, app *App, target string) *Page {
+func mustPage(t *testing.T, app *App, sourcePath string) *Page {
 	t.Helper()
 
-	page := app.findPageByURL(target)
-	if page == nil {
-		t.Fatalf("missing page %s", target)
+	page, err := app.loadPage(filepath.Join(app.SrcDir, filepath.FromSlash(sourcePath)))
+	if err != nil {
+		t.Fatalf("missing page %s: %v", sourcePath, err)
 	}
 
 	return page
@@ -296,27 +304,27 @@ func TestSidebarCanLinkToAnotherSidebar(t *testing.T) {
 		"/guide/": [{
 			"text": "Guide",
 			"items": [
-				{ "text": "Start", "link": "/guide/start" },
-				{ "text": "CLI", "link": "/reference/cli" }
+				{ "text": "Start", "link": "/guide/start/" },
+				{ "text": "CLI", "link": "/reference/cli/" }
 			]
 		}],
 		"/reference/": [{
 			"text": "Reference",
-			"items": [{ "text": "CLI", "link": "/reference/cli" }]
+			"items": [{ "text": "CLI", "link": "/reference/cli/" }]
 		}]
 	}`)
 	writeFile(t, filepath.Join(root, "docs", "reference", "cli.md"), "# CLI\n")
 
 	app := loadTestProject(t, root)
-	page := mustPage(t, app, "/guide/start")
+	page := mustPage(t, app, "guide/start.md")
 	state := &RenderState{Page: page, Sidebar: app.sidebarFor(page.URL)}
 	app.applyNavigation(state)
 
-	if state.Next == nil || state.Next.Href != "/reference/cli" || state.Next.Text != "CLI" {
+	if state.Next == nil || state.Next.Href != "/reference/cli/" || state.Next.Text != "CLI" {
 		t.Fatalf("cross-sidebar next = %+v", state.Next)
 	}
 
-	target := app.sidebarFor("/reference/cli")
+	target := app.sidebarFor("/reference/cli/")
 	if len(target) != 1 || target[0].Text != "Reference" {
 		t.Fatalf("target sidebar = %+v", target)
 	}
@@ -354,18 +362,63 @@ func TestSidebarRejectsNormalizedDuplicatePrefixes(t *testing.T) {
 	}
 }
 
-func TestFindPageByURLCaseAndHTMLSuffix(t *testing.T) {
+func TestURLForFile(t *testing.T) {
+	root := t.TempDir()
+	app := &App{
+		Config: Config{CleanURLs: true},
+		SrcDir: root,
+	}
+
+	cases := []struct {
+		file string
+		want string
+	}{
+		{"index.md", "/"},
+		{"guide/index.md", "/guide/"},
+		{"guide/start.md", "/guide/start/"},
+		{"upper.MD", "/upper/"},
+	}
+
+	for _, test := range cases {
+		got := app.urlForFile(filepath.Join(root, filepath.FromSlash(test.file)))
+		if got != test.want {
+			t.Errorf("urlForFile(%q) = %q, want %q", test.file, got, test.want)
+		}
+	}
+
+	app.CleanURLs = false
+	if got := app.urlForFile(filepath.Join(root, "guide", "start.md")); got != "/guide/start.html" {
+		t.Errorf("non-clean urlForFile = %q", got)
+	}
+}
+
+func TestFileForURLPrefersSource(t *testing.T) {
 	root := t.TempDir()
 	writeTestProject(t, root)
-	writeFile(t, filepath.Join(root, "docs", "upper.MD"), "# Upper\n")
-	writeFile(t, filepath.Join(root, "docs", "html-api.html.md"), "# API\n")
+	writeFile(t, filepath.Join(root, "docs", "logo.svg"), "source")
+	writeFile(t, filepath.Join(root, "public", "logo.svg"), "public")
 
 	app := loadTestProject(t, root)
-	if page := app.findPageByURL("/upper"); page == nil || page.SourcePath != "upper.MD" {
-		t.Fatalf("case-insensitive page = %+v", page)
+	file, ok := app.fileForURL("/logo.svg")
+	if !ok {
+		t.Fatal("logo.svg not found")
 	}
-	if page := app.findPageByURL("/html-api.html"); page == nil || page.SourcePath != "html-api.html.md" {
-		t.Fatalf("html-suffix page = %+v", page)
+	if !isWithin(app.SrcDir, file) {
+		t.Fatalf("fileForURL picked %q, want the source file", file)
+	}
+}
+
+func TestEditURLEscapesSourcePath(t *testing.T) {
+	root := t.TempDir()
+	writeTestProject(t, root)
+	writeFile(t, filepath.Join(root, "docs", "guide", "my page.md"), "# My page\n")
+
+	app := loadTestProject(t, root)
+	app.EditLink = "https://example.com/edit/:path"
+
+	page := mustPage(t, app, "guide/my page.md")
+	if got := app.editURL(page); got != "https://example.com/edit/guide/my%20page.md" {
+		t.Fatalf("editURL = %q", got)
 	}
 }
 

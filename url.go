@@ -37,94 +37,45 @@ func (app *App) applyNavigation(state *RenderState) {
 	}
 }
 
-// Find a page by URL path, return a page meta data
-func (app *App) findPageByURL(target string) *Page {
-	target = canonicalURL(target)
-	trailing := strings.HasSuffix(target, "/")
-	relative := strings.TrimPrefix(target, "/")
-	relative = strings.TrimSuffix(relative, ".html")
-	relative = strings.TrimSuffix(relative, "/")
+func (app *App) fileForURL(sitePath string) (string, bool) {
+	relative := strings.TrimPrefix(path.Clean("/"+sitePath), "/")
 
-	if relative == "" || relative == "index" {
-		return app.findSource(markdownCandidates("index"))
+	if app.CleanURLs && path.Base(relative) == "index.html" {
+		relative = strings.TrimSuffix(strings.TrimSuffix(relative, "index.html"), "/")
 	}
 
-	candidates := make([]string, 0, 8)
-	if strings.HasSuffix(target, ".html") {
-		candidates = append(candidates, markdownCandidates(strings.TrimPrefix(target, "/"))...)
-	}
-	if trailing {
-		candidates = append(candidates, markdownCandidates(relative+"/index")...)
-	}
-	candidates = append(candidates, markdownCandidates(relative)...)
-	if !trailing {
-		candidates = append(candidates, markdownCandidates(relative+"/index")...)
+	bases := make([]string, 0, 2)
+	switch {
+	case relative == "":
+		bases = append(bases, "index")
+	case app.CleanURLs:
+		bases = append(bases, relative+"/index", relative)
+	case strings.HasSuffix(strings.ToLower(relative), ".html"):
+		bases = append(bases, relative[:len(relative)-len(".html")])
+	default:
+		bases = append(bases, relative+"/index")
 	}
 
-	return app.findSource(candidates)
-}
-
-func markdownCandidates(base string) []string {
-	return []string{
-		base + ".md",
-		base + ".markdown",
-		base + ".MD",
-		base + ".Markdown",
-	}
-}
-
-// Find a page by Source path, like path of end with `.md“, return a page meta data
-func (app *App) findPageBySource(relative string) *Page {
-	relative = strings.TrimPrefix(path.Clean("/"+relative), "/")
-
-	if isMarkdownPath(relative) {
-		if page, err := app.loadPage(relative); err == nil {
-			return page
+	for _, base := range bases {
+		for _, extension := range []string{".md", ".markdown", ".MD", ".Markdown"} {
+			file := filepath.Join(app.SrcDir, filepath.FromSlash(base+extension))
+			if info, err := os.Stat(file); err == nil && !info.IsDir() {
+				return file, true
+			}
 		}
 	}
 
-	trailing := relative == "" || strings.HasSuffix(relative, "/")
-	if relative == "" {
-		relative = "index"
-	} else if strings.HasSuffix(relative, "/") {
-		relative = strings.TrimSuffix(relative, "/") + "/index"
-	}
-
-	candidates := markdownCandidates(relative)
-	if !trailing {
-		candidates = append(candidates, markdownCandidates(relative+"/index")...)
-	}
-
-	return app.findSource(candidates)
-}
-
-func (app *App) findSource(candidates []string) *Page {
-	key := strings.Join(candidates, "\x00")
-
-	app.lookupMu.Lock()
-	relative, cached := app.sourceCache[key]
-	app.lookupMu.Unlock()
-	if cached {
-		if relative == "" {
-			return nil
-		}
-		page, _ := app.loadPage(relative)
-		return page
-	}
-
-	for _, candidate := range candidates {
-		absolute := filepath.Join(app.SrcDir, filepath.FromSlash(candidate))
-		if info, err := os.Stat(absolute); err == nil && !info.IsDir() {
-			app.lookupMu.Lock()
-			app.sourceCache[key] = candidate
-			app.lookupMu.Unlock()
-			page, _ := app.loadPage(candidate)
-			return page
+	names := []string{relative, path.Join(relative, "index.html")}
+	for _, root := range []string{app.SrcDir, app.PublicDir} {
+		for _, name := range names {
+			file := filepath.Join(root, filepath.FromSlash(name))
+			info, err := os.Stat(file)
+			if err != nil || info.IsDir() || isMarkdownFile(file) && isWithin(app.SrcDir, file) {
+				continue
+			}
+			return file, true
 		}
 	}
 
-	app.lookupMu.Lock()
-	app.sourceCache[key] = ""
-	app.lookupMu.Unlock()
-	return nil
+	return "", false
 }

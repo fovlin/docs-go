@@ -69,7 +69,7 @@ defaults. Paths are relative to the project directory.
   {
     "text": "Guide",
     "items": [
-      { "text": "Getting started", "link": "/guide/getting-started" }
+      { "text": "Getting started", "link": "/guide/getting-started/" }
     ]
   }
 ]
@@ -83,7 +83,7 @@ or an object keyed by URL prefix:
     {
       "text": "Guide",
       "items": [
-        { "text": "Getting started", "link": "/guide/getting-started" }
+        { "text": "Getting started", "link": "/guide/getting-started/" }
       ]
     }
   ]
@@ -136,9 +136,9 @@ docs-go <command> [options] [project]
   callout containers and inline HTML tags.
 - No frontmatter. The first H1 is the page title and the first paragraph is the
   meta description; missing values fall back to the file name and site config.
-- Markdown links to `.md` files are rewritten to the generated pages; missing
-  targets are reported as warnings.
-- Clean URLs, canonical URLs, `404.html` and an optional `sitemap.xml`.
+- Links are written into the page as authored; they are not rewritten or
+  validated, so the author points them at the URL the build emits.
+- Clean URLs (`<name>/index.html` folders), canonical URLs, `404.html` and an optional `sitemap.xml`.
 - Direct output generation: `dist/` is cleared and rewritten on each build.
 - A dev server that renders individual pages from source on request and
   reloads config/sidebar snapshots without a full rebuild.

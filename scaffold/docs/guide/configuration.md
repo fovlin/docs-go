@@ -21,7 +21,7 @@ Every field is optional; missing fields use defaults.
   "clean_urls": true,
   "logo": "/logo.svg",
   "nav": [
-    { "text": "Guide", "link": "/guide/getting-started" }
+    { "text": "Guide", "link": "/guide/getting-started/" }
   ],
   "social_links": [
     { "icon": "github", "link": "https://github.com/me", "label": "GitHub" }
@@ -43,7 +43,7 @@ Every field is optional; missing fields use defaults.
 | `out_dir` | `dist` | Build output directory. |
 | `public_dir` | `public` | Files copied to the output root. |
 | `sidebar_file` | `config/sidebar.json` | Sidebar file, relative to the project. |
-| `clean_urls` | `true` | Omit `.html` from generated links. |
+| `clean_urls` | `true` | Write non-index pages as `<name>/index.html` and use trailing-slash URLs. |
 | `site_url` | empty | Absolute URL used for canonical links and the sitemap. |
 | `sitemap` | `false` | Write `sitemap.xml`; requires `site_url`. |
 
@@ -107,7 +107,7 @@ The sidebar is separate from `config/docs.json`. It accepts one array for every 
   {
     "text": "Guide",
     "items": [
-      { "text": "Getting started", "link": "/guide/getting-started" }
+      { "text": "Getting started", "link": "/guide/getting-started/" }
     ]
   }
 ]
@@ -121,8 +121,8 @@ or an object keyed by URL prefix:
     {
       "text": "Guide",
       "items": [
-        { "text": "Getting started", "link": "/guide/getting-started" },
-        { "text": "Configuration", "link": "/guide/configuration" }
+        { "text": "Getting started", "link": "/guide/getting-started/" },
+        { "text": "Configuration", "link": "/guide/configuration/" }
       ]
     }
   ]

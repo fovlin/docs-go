@@ -175,19 +175,22 @@ func sidebarHTML(page *RenderState) string {
 	}
 
 	if len(page.Nav) > 0 {
-		fmt.Fprintf(&b, "<nav class=\"mobile-nav\" aria-label=\"Main\">\n<p class=\"mobile-nav-title\">%s</p>\n", escapeHTML(page.UI.Menu))
+		fmt.Fprintf(&b, "<nav class=\"mobile-nav\" aria-label=\"Main\">\n<p class=\"mobile-nav-title\">%s</p>\n<ul class=\"mobile-nav-list\">\n", escapeHTML(page.UI.Menu))
+
 		for _, link := range page.Nav {
 			class := "mobile-nav-link"
 			if link.Active {
 				class += " active"
 			}
-			fmt.Fprintf(&b, "<a class=\"%s\" href=\"%s\"", class, escapeHTML(link.Href))
+
+			fmt.Fprintf(&b, "<li class=\"mobile-nav-entry\"><a class=\"%s\" href=\"%s\"", class, escapeHTML(link.Href))
 			if link.External {
 				b.WriteString(" target=\"_blank\" rel=\"noopener\"")
 			}
-			fmt.Fprintf(&b, ">%s</a>\n", escapeHTML(link.Text))
+			fmt.Fprintf(&b, ">%s</a></li>\n", escapeHTML(link.Text))
 		}
-		b.WriteString("</nav>\n")
+
+		b.WriteString("</ul>\n</nav>\n")
 	}
 
 	b.WriteString("</div>\n</aside>\n<div class=\"sidebar-backdrop\" id=\"sidebar-backdrop\" hidden></div>\n")

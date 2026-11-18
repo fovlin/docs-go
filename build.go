@@ -92,30 +92,21 @@ func (app *App) buildPage() (int, error) {
 }
 
 func (app *App) walkPages(visit func(*Page) error) error {
-	err := filepath.WalkDir(app.SrcDir, func(current string, entry fs.DirEntry, err error) error {
+	return filepath.WalkDir(app.SrcDir, func(current string, entry fs.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
-
 		if entry.IsDir() || !isMarkdownFile(current) {
 			return nil
 		}
 
-		relative, err := filepath.Rel(app.SrcDir, current)
+		page, err := app.loadPage(current)
 		if err != nil {
-			return err
-		}
-		relative = filepath.ToSlash(relative)
-
-		page, err := app.loadPage(relative)
-		if err != nil {
-			return fmt.Errorf("read %s: %w", relative, err)
+			return fmt.Errorf("read %s: %w", current, err)
 		}
 
 		return visit(page)
 	})
-
-	return err
 }
 
 func (app *App) initOutput() error {

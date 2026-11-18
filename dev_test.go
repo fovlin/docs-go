@@ -23,7 +23,7 @@ func TestDevReadsPageFromDiskEachTime(t *testing.T) {
 	app := loadTestProject(t, root)
 	dev := newDev(app, "config/docs.json", "", "")
 
-	first := devGet(t, dev, "/guide/start")
+	first := devGet(t, dev, "/guide/start/")
 	if first.Code != http.StatusOK {
 		t.Fatalf("initial status = %d", first.Code)
 	}
@@ -33,7 +33,7 @@ func TestDevReadsPageFromDiskEachTime(t *testing.T) {
 
 	writeFile(t, filepath.Join(root, "docs", "guide", "start.md"), "# Changed\n\nNew body.\n")
 
-	second := devGet(t, dev, "/guide/start")
+	second := devGet(t, dev, "/guide/start/")
 	if second.Code != http.StatusOK {
 		t.Fatalf("second status = %d", second.Code)
 	}
@@ -69,7 +69,7 @@ func TestDevSnapshotSwap(t *testing.T) {
 		t.Fatalf("reloaded title = %q", reloaded.Title)
 	}
 
-	response := devGet(t, dev, "/guide/start")
+	response := devGet(t, dev, "/guide/start/")
 	if !strings.Contains(response.Body.String(), "<title>Start | Changed docs</title>") {
 		t.Fatal("request did not use the swapped snapshot")
 	}
@@ -87,7 +87,7 @@ func TestDevFailedReloadKeepsPreviousSnapshot(t *testing.T) {
 		t.Fatal("failed reload replaced the previous snapshot")
 	}
 
-	response := devGet(t, dev, "/guide/start")
+	response := devGet(t, dev, "/guide/start/")
 	if !strings.Contains(response.Body.String(), "<title>Start | Test docs</title>") {
 		t.Fatal("request did not use the previous snapshot after a failed reload")
 	}
@@ -106,7 +106,7 @@ func TestDevFailedReloadKeepsPreviousSnapshot(t *testing.T) {
 	}
 }
 
-func TestDevCacheResetSeesNewSource(t *testing.T) {
+func TestDevSeesNewSourceWithoutCache(t *testing.T) {
 	root := t.TempDir()
 	writeTestProject(t, root)
 	app, err := LoadApp(root, "config/docs.json", "", "")
@@ -114,35 +114,142 @@ func TestDevCacheResetSeesNewSource(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if page := app.findPageByURL("/guide/later"); page != nil {
+	if _, ok := app.fileForURL("/guide/later/"); ok {
 		t.Fatal("unexpected page before creation")
 	}
 
 	writeFile(t, filepath.Join(root, "docs", "guide", "later.md"), "# Later\n")
-	app.clearLookups()
 
-	if page := app.findPageByURL("/guide/later"); page == nil {
-		t.Fatal("new source stayed cached as missing")
+	file, ok := app.fileForURL("/guide/later/")
+	if !ok {
+		t.Fatal("new source not found")
+	}
+	if page, err := app.loadPage(file); err != nil || page.SourcePath != "guide/later.md" {
+		t.Fatalf("new source = %+v, %v", page, err)
 	}
 }
 
-func TestSidebarTitleFollowsEditedSource(t *testing.T) {
+func plainProject(t *testing.T) *App {
+	t.Helper()
+
 	root := t.TempDir()
 	writeTestProject(t, root)
-	writeFile(t, filepath.Join(root, "config/sidebar.json"), `{
-		"/guide/": [{ "items": [{ "link": "/guide/start" }] }]
-	}`)
-	app, err := LoadApp(root, "config/docs.json", "", "")
-	if err != nil {
-		t.Fatal(err)
+	writeFile(t, filepath.Join(root, "config", "docs.json"), `{"title": "Test docs", "clean_urls": false}`)
+
+	return loadTestProject(t, root)
+}
+
+func TestFileForURLFollowsBuildRoutes(t *testing.T) {
+	cases := []struct {
+		name    string
+		app     *App
+		found   []string
+		missing []string
+	}{
+		{
+			name:    "clean",
+			app:     loadTestProject(t, tempProject(t)),
+			found:   []string{"/", "/guide", "/guide/", "/guide/index.html", "/guide/start", "/guide/start/", "/guide/start/index.html"},
+			missing: []string{"/guide/start.html", "/guide/start.md"},
+		},
+		{
+			name:    "plain",
+			app:     plainProject(t),
+			found:   []string{"/", "/guide", "/guide/", "/guide/index.html", "/guide/start.html"},
+			missing: []string{"/guide/start", "/guide/start/", "/guide/start.md"},
+		},
 	}
 
-	if text := app.sidebarFor("/guide/start")[0].Items[0].Text; text != "Start" {
-		t.Fatalf("initial sidebar text = %q", text)
+	for _, test := range cases {
+		t.Run(test.name, func(t *testing.T) {
+			for _, target := range test.found {
+				file, ok := test.app.fileForURL(target)
+				if !ok {
+					t.Errorf("%s not found", target)
+					continue
+				}
+				if !isWithin(test.app.SrcDir, file) {
+					t.Errorf("%s resolved to %s", target, file)
+				}
+			}
+
+			for _, target := range test.missing {
+				if file, ok := test.app.fileForURL(target); ok {
+					t.Errorf("%s resolved to %s", target, file)
+				}
+			}
+		})
+	}
+}
+
+func TestFileForURLBindsIndexHTMLToSource(t *testing.T) {
+	root := tempProject(t)
+	writeFile(t, filepath.Join(root, "docs", "guide", "deep", "index.md"), "# Deep\n")
+	app := loadTestProject(t, root)
+
+	cases := map[string]string{
+		"/guide/index.html":       "guide/index.md",
+		"/guide/start/index.html": "guide/start.md",
+		"/guide/deep/index.html":  "guide/deep/index.md",
 	}
 
-	writeFile(t, filepath.Join(root, "docs", "guide", "start.md"), "# Changed\n\nBody.\n")
-	if text := app.sidebarFor("/guide/start")[0].Items[0].Text; text != "Changed" {
-		t.Fatalf("sidebar text did not follow source: %q", text)
+	for target, source := range cases {
+		file, ok := app.fileForURL(target)
+		if !ok {
+			t.Errorf("%s not found", target)
+			continue
+		}
+
+		relative, err := filepath.Rel(app.SrcDir, file)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := filepath.ToSlash(relative); got != source {
+			t.Errorf("%s -> %s, want %s", target, got, source)
+		}
 	}
+}
+
+func TestDevRoutesMatchBuild(t *testing.T) {
+	clean := newDev(loadTestProject(t, tempProject(t)), "config/docs.json", "", "")
+	for target, want := range map[string]int{
+		"/":                       http.StatusOK,
+		"/guide":                  http.StatusOK,
+		"/guide/":                 http.StatusOK,
+		"/guide/index.html":       http.StatusOK,
+		"/guide/start":            http.StatusOK,
+		"/guide/start/":           http.StatusOK,
+		"/guide/start/index.html": http.StatusOK,
+		"/guide/start.html":       http.StatusNotFound,
+		"/guide/start.md":         http.StatusNotFound,
+	} {
+		if got := devGet(t, clean, target).Code; got != want {
+			t.Errorf("clean %s = %d, want %d", target, got, want)
+		}
+	}
+
+	plain := newDev(plainProject(t), "config/docs.json", "", "")
+	for target, want := range map[string]int{
+		"/":                 http.StatusOK,
+		"/guide":            http.StatusOK,
+		"/guide/":           http.StatusOK,
+		"/guide/start.html": http.StatusOK,
+		"/guide/index.html": http.StatusOK,
+		"/guide/start/":     http.StatusNotFound,
+		"/guide/start":      http.StatusNotFound,
+		"/guide/start.md":   http.StatusNotFound,
+	} {
+		if got := devGet(t, plain, target).Code; got != want {
+			t.Errorf("plain %s = %d, want %d", target, got, want)
+		}
+	}
+}
+
+func tempProject(t *testing.T) string {
+	t.Helper()
+
+	root := t.TempDir()
+	writeTestProject(t, root)
+
+	return root
 }

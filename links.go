@@ -55,14 +55,6 @@ func (app *App) resolveConfigLink(raw string) (string, string, bool) {
 	}
 	target = canonicalURL(target)
 
-	if page := app.findPageByURL(target); page != nil {
-		target = page.URL
-	} else if page := app.findPageBySource(strings.TrimPrefix(target, "/")); page != nil {
-		target = page.URL
-	} else if isMarkdownPath(target) {
-		target = markdownFallbackURL(target, app.CleanURLs)
-	}
-
 	return escapePath(target) + urlSuffix(parsed), target, false
 }
 

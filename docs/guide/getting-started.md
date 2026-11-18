@@ -10,9 +10,9 @@ Every `.md` file under `docs/` becomes a page:
 | --- | --- |
 | `docs/index.md` | `/` |
 | `docs/guide/index.md` | `/guide/` (optional directory index) |
-| `docs/guide/getting-started.md` | `/guide/getting-started` |
+| `docs/guide/getting-started.md` | `/guide/getting-started/` |
 
-With `clean_urls` enabled the generated file is still `guide/getting-started.html`, but links omit the extension. Set `"clean_urls": false` if your host cannot serve extensionless URLs.
+With `clean_urls` enabled each non-index page is written to `guide/getting-started/index.html` and linked as `/guide/getting-started/`. Set `"clean_urls": false` to write `guide/getting-started.html` instead.
 
 ## Build the site
 
@@ -42,11 +42,11 @@ Create `docs/guide/my-page.md`, then add it to `config/sidebar.json`:
     {
       "text": "Guide",
       "items": [
-        { "text": "My page", "link": "/guide/my-page" }
+        { "text": "My page", "link": "/guide/my-page/" }
       ]
     }
   ]
 }
 ~~~
 
-Links may point at `/guide/my-page`, `/guide/my-page.md` or `/guide/my-page.html`; all three resolve to the page.
+Links are used exactly as written, so point them at the URL the build emits: `/guide/my-page/` with clean URLs, `/guide/my-page.html` without.

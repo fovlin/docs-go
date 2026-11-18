@@ -9,8 +9,7 @@
 		}
 	}
 
-	var data = readBootstrap() || {};
-	var ui = data.ui || data;
+	var ui = readBootstrap() || {};
 
 	var THEME_KEY = "docs-go-theme";
 	var root = document.documentElement;
@@ -24,62 +23,15 @@
 		return "light";
 	}
 
-	function storedTheme() {
-		try {
-			var value = localStorage.getItem(THEME_KEY);
-			if (value === "light" || value === "dark") {
-				return value;
-			}
-		} catch (error) {
-			/* ignore */
-		}
-
-		return "";
-	}
-
-	function preferredTheme() {
-		var stored = storedTheme();
-		if (stored) {
-			return stored;
-		}
-
-		if (appearance === "light" || appearance === "dark") {
-			return appearance;
-		}
-
-		return "";
-	}
-
-	function currentTheme() {
-		return preferredTheme() || systemTheme();
-	}
-
-	function updateThemeColor(theme) {
-		var meta = document.querySelector('meta[name="theme-color"]');
-		if (meta) {
-			meta.setAttribute("content", theme === "dark" ? "#101010" : "#ffffff");
-		}
-	}
-
-	function applyTheme() {
-		var theme = preferredTheme();
-
-		if (theme) {
-			root.dataset.theme = theme;
-		} else {
-			delete root.dataset.theme;
-		}
-
-		updateThemeColor(currentTheme());
-	}
-
 	var themeButton = document.getElementById("theme-button");
 	if (themeButton) {
 		themeButton.addEventListener("click", function () {
-			var next = currentTheme() === "dark" ? "light" : "dark";
+			var system = systemTheme();
+			var next = (root.dataset.theme || system) === "dark" ? "light" : "dark";
+			var followSystem = appearance === "auto" && next === system;
 
 			try {
-				if (appearance === "auto" && next === systemTheme()) {
+				if (followSystem) {
 					localStorage.removeItem(THEME_KEY);
 				} else {
 					localStorage.setItem(THEME_KEY, next);
@@ -88,27 +40,18 @@
 				/* ignore */
 			}
 
-			applyTheme();
-		});
-	}
+			if (followSystem) {
+				delete root.dataset.theme;
+			} else {
+				root.dataset.theme = next;
+			}
 
-	if (window.matchMedia) {
-		window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", function () {
-			if (!preferredTheme()) {
-				applyTheme();
+			var meta = document.querySelector('meta[name="theme-color"]');
+			if (meta) {
+				meta.setAttribute("content", next === "dark" ? "#101010" : "#ffffff");
 			}
 		});
 	}
-
-	window.addEventListener("storage", function (event) {
-		if (event.key !== null && event.key !== THEME_KEY) {
-			return;
-		}
-
-		applyTheme();
-	});
-
-	applyTheme();
 
 	/* mobile sidebar */
 
@@ -165,7 +108,7 @@
 
 	/* collapsible sidebar groups */
 
-	Array.prototype.forEach.call(document.querySelectorAll(".sidebar-group-row.is-toggle"), function (row) {
+	document.querySelectorAll(".sidebar-group-row.is-toggle").forEach(function (row) {
 		function toggle() {
 			var group = row.closest(".sidebar-group");
 			if (!group) {
@@ -245,10 +188,6 @@
 	var COPY_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>';
 	var CHECK_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m5 13 4 4L19 7"/></svg>';
 
-	function codeText(pre) {
-		return pre.innerText;
-	}
-
 	function copyText(text) {
 		if (navigator.clipboard && navigator.clipboard.writeText) {
 			return navigator.clipboard.writeText(text);
@@ -280,7 +219,19 @@
 		});
 	}
 
-	Array.prototype.forEach.call(document.querySelectorAll(".code-block"), function (block) {
+	var copyLabel = ui.copy || "Copy";
+	var copiedLabel = ui.copied || "Copied";
+
+	function setCopyState(button, copied) {
+		button.classList.toggle("copied", copied);
+		button.innerHTML = copied ? CHECK_ICON : COPY_ICON;
+
+		var label = copied ? copiedLabel : copyLabel;
+		button.title = label;
+		button.setAttribute("aria-label", label);
+	}
+
+	document.querySelectorAll(".code-block").forEach(function (block) {
 		var pre = block.querySelector("pre");
 		if (!pre) {
 			return;
@@ -289,22 +240,14 @@
 		var button = document.createElement("button");
 		button.type = "button";
 		button.className = "copy-btn";
-		button.setAttribute("aria-label", ui.copy || "Copy");
-		button.title = ui.copy || "Copy";
-		button.innerHTML = COPY_ICON;
+		setCopyState(button, false);
 
 		button.addEventListener("click", function () {
-			copyText(codeText(pre)).then(function () {
-				button.classList.add("copied");
-				button.innerHTML = CHECK_ICON;
-				button.title = ui.copied || "Copied";
-				button.setAttribute("aria-label", ui.copied || "Copied");
+			copyText(pre.innerText).then(function () {
+				setCopyState(button, true);
 
 				window.setTimeout(function () {
-					button.classList.remove("copied");
-					button.innerHTML = COPY_ICON;
-					button.title = ui.copy || "Copy";
-					button.setAttribute("aria-label", ui.copy || "Copy");
+					setCopyState(button, false);
 				}, 1600);
 			}).catch(function () {
 				/* ignore */
@@ -316,7 +259,7 @@
 
 	/* external links in the document */
 
-	Array.prototype.forEach.call(document.querySelectorAll(".doc a[href]"), function (link) {
+	document.querySelectorAll(".doc a[href]").forEach(function (link) {
 		var href = link.getAttribute("href");
 		if (!href || href.charAt(0) === "#" || href.indexOf("mailto:") === 0 || href.indexOf("tel:") === 0) {
 			return;
@@ -337,11 +280,11 @@
 
 	/* outline scrollspy */
 
-	var outlineLinks = Array.prototype.slice.call(document.querySelectorAll(".outline-list a"));
+	var outlineLinks = Array.from(document.querySelectorAll(".outline-list a"));
 	var outlineEntries = [];
 	var outlineByID = {};
 
-	Array.prototype.forEach.call(outlineLinks, function (link) {
+	outlineLinks.forEach(function (link) {
 		var href = link.getAttribute("href") || "";
 		if (href.charAt(0) !== "#") {
 			return;
@@ -389,7 +332,7 @@
 				active = outlineEntries[outlineEntries.length - 1];
 			}
 
-			Array.prototype.forEach.call(outlineLinks, function (link) {
+			outlineLinks.forEach(function (link) {
 				link.classList.toggle("active", active.links.indexOf(link) !== -1);
 			});
 		}
