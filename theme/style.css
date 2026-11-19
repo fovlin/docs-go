@@ -277,7 +277,7 @@ svg {
 
 .page-menu-title {
 	display: block;
-	margin-bottom: 8px;
+	padding: 4px 0px;
 	white-space: nowrap;
 	text-decoration: none;
 	font-size: 14px;
