@@ -1,5 +1,5 @@
 :root {
-	--bg: light-dark(#f8f6f2, #0f0e0c);
+	--bg: light-dark(#fffdfa, #0f0e0c);
 	--surface: light-dark(#efedea, #181715);
 	--surface-2: light-dark(#e8e6e2, #1f1e1c);
 	--border: light-dark(#dfddda, #282725);
@@ -21,7 +21,7 @@
 	--overlay: rgba(0, 0, 0, 0.42);
 	--selection-bg: light-dark(#8f5f00, #ffaf00);
 	--selection-text: light-dark(#f8f6f2, #181715);
-	--code-bg: var(--surface-2);
+	--code-bg: light-dark(#efefef, #1f1f1f);
 	--code-block-bg: var(--code-bg);
 	--code-border: var(--code-bg);
 	--warning-bg: var(--accent-soft);
