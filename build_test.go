@@ -337,7 +337,6 @@ func TestBuildRejectsOutputOverlap(t *testing.T) {
 	}
 }
 
-
 func TestLayoutBuild(t *testing.T) {
 	list := compileLayout(`
 		{{ @fovlin }} xxx a b c {{@kksk}} 

@@ -51,12 +51,12 @@ func (app *App) renderLayout(page *RenderState) []byte {
 			builder.WriteString(part.text)
 			continue
 		}
-			
+
 		value, ok := values[part.name]
 		if !ok {
 			record.Error("unknown field:", part.name)
 		}
-		
+
 		builder.WriteString(value)
 	}
 
@@ -309,7 +309,6 @@ func outlineList(page *RenderState) string {
 
 	var b strings.Builder
 	b.WriteString("<ul class=\"outline-list\">")
-	fmt.Fprintf(&b, "<li class=\"outline-item\"><a href=\"#\">%s</a></li>", escapeHTML(page.Heading))
 	for _, heading := range page.Outline {
 		fmt.Fprintf(&b, "<li class=\"outline-item outline-level-%d\"><a href=\"#%s\">%s</a></li>", heading.Level, escapeHTML(heading.ID), escapeHTML(heading.Text))
 	}
@@ -324,7 +323,7 @@ func outlineHTML(page *RenderState) string {
 
 	var b strings.Builder
 	b.WriteString("<aside class=\"outline\">")
-	fmt.Fprintf(&b, "<p class=\"outline-title\">%s</p>", escapeHTML(page.Config.Outline.Label))
+	fmt.Fprintf(&b, "<a class=\"outline-title\" href=\"#\">%s</a>", escapeHTML(page.Config.Outline.Label))
 	b.WriteString(outlineList(page))
 	b.WriteString("</aside>")
 	return b.String()
@@ -346,7 +345,7 @@ func pageMenu(page *RenderState) string {
 	var b strings.Builder
 	b.WriteString("<div class=\"page-menu\" id=\"page-menu\" hidden>")
 	if len(page.Outline) > 0 {
-		fmt.Fprintf(&b, "<div class=\"page-menu-section\"><p class=\"page-menu-title\">%s</p>", escapeHTML(page.Config.Outline.Label))
+		fmt.Fprintf(&b, "<div class=\"page-menu-section\"><a class=\"page-menu-title\" href=\"#\">%s</a>", escapeHTML(page.Config.Outline.Label))
 		b.WriteString(outlineList(page))
 		b.WriteString("</div>")
 	}

@@ -85,7 +85,7 @@ Every field is optional. Paths are resolved against the project directory; absol
 
 | Field | Default | Description |
 | --- | --- | --- |
-| `outline.label` | `On this page` | Outline heading. |
+| `outline.label` | `On this page` | Outline heading; it links back to the top of the page. |
 | `outline.level` | `[2, 3]` | Heading levels included in the outline. Values outside 1–6 are ignored; an empty list uses the default. |
 
 ### Page chrome

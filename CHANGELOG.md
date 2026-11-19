@@ -6,6 +6,7 @@
 - `nav[].active_match` is honoured: a nav entry is active when the page URL starts with the given prefix.
 - Previous and next links skip sidebar group entries and follow leaf entries only.
 - Sidebar group links and the group arrow render as a single link row.
+- The outline heading links back to the top of the page.
 - Documentation: added a guide overview and a Markdown reference; the configuration reference covers every field.
 - Removed the undocumented `serve` alias; use `dev`.
 - Fixed `init` with an absolute path printing an empty location.
