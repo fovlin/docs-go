@@ -8,6 +8,8 @@
 - Sidebar group arrows are buttons beside the link and toggle the group; groups with a link still navigate from the label.
 - The palette is warm: every colour is a root variable, and the browser theme colour follows the page background.
 - The theme toggle locks an explicit choice and returns to following the system theme when the chosen theme matches it.
+- Code blocks no longer render a language label; the copy button is hidden until the block is hovered or the button is focused.
+- Code blocks span the full width on narrow screens.
 - The outline heading links back to the top of the page.
 - Documentation: added a guide overview and a Markdown reference; the configuration reference covers every field.
 - Removed the undocumented `serve` alias; use `dev`.

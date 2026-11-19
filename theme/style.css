@@ -40,6 +40,7 @@
 
 	--topbar-h: 56px;
 	--main-pad-top: 40px;
+	--main-pad-x: 36px;
 	--sidebar-w: 270px;
 	--outline-w: 230px;
 	--content-w: 760px;
@@ -566,7 +567,7 @@ svg {
 /* content */
 
 .main {
-	padding: var(--main-pad-top) 36px 92px;
+	padding: var(--main-pad-top) var(--main-pad-x) 92px;
 }
 
 .content-grid {
@@ -768,19 +769,6 @@ svg {
 	overflow: hidden;
 }
 
-.code-block[data-lang]::before {
-	content: attr(data-lang);
-	position: absolute;
-	top: 7px;
-	right: 7px;
-	color: var(--faint);
-	font-family: var(--mono);
-	font-size: 11px;
-	letter-spacing: 0.04em;
-	text-transform: uppercase;
-	pointer-events: none;
-}
-
 .code-block pre {
 	margin: 0;
 	padding: 18px 20px;
@@ -807,22 +795,14 @@ svg {
 	background: var(--surface);
 	color: var(--muted);
 	opacity: 0;
+	pointer-events: none;
 	cursor: pointer;
 }
 
 .code-block:hover .copy-btn,
 .copy-btn:focus-visible {
 	opacity: 1;
-}
-
-@media (hover: none) {
-	.copy-btn {
-		opacity: 1;
-	}
-}
-
-.code-block:hover::before {
-	opacity: 0;
+	pointer-events: auto;
 }
 
 .copy-btn:hover {
@@ -1166,7 +1146,8 @@ svg {
 	}
 
 	.main {
-		padding: 32px 24px 72px;
+		--main-pad-x: 24px;
+		padding: 32px var(--main-pad-x) 72px;
 	}
 
 	.brand-name {
@@ -1205,7 +1186,16 @@ svg {
 	}
 
 	.main {
-		padding: 26px 18px 64px;
+		--main-pad-x: 18px;
+		padding: 26px var(--main-pad-x) 64px;
+	}
+
+	.code-block {
+		margin-left: calc(-1 * var(--main-pad-x));
+		margin-right: calc(-1 * var(--main-pad-x));
+		border-left: 0;
+		border-right: 0;
+		border-radius: 0;
 	}
 
 	.doc h1 {
@@ -1261,7 +1251,8 @@ svg {
 	}
 
 	.main {
-		padding: 22px 12px 56px;
+		--main-pad-x: 12px;
+		padding: 22px var(--main-pad-x) 56px;
 	}
 
 	.doc {
@@ -1324,7 +1315,7 @@ svg {
 
 .btn-primary {
 	border: 1.6px solid var(--accent);
-	background: var(--accent);
+	background: var(--bg);
 	color: var(--on-accent);
 }
 

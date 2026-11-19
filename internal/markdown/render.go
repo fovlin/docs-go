@@ -82,11 +82,11 @@ func (r *renderer) code(item block) {
 		language = fields[0]
 	}
 
-	if language == "" {
-		r.builder.WriteString(`<div class="code-block"><pre><code>`)
-	} else {
-		fmt.Fprintf(&r.builder, `<div class="code-block" data-lang="%s"><pre><code class="language-%s">`, html.EscapeString(language), html.EscapeString(language))
+	r.builder.WriteString(`<div class="code-block"><pre><code`)
+	if language != "" {
+		fmt.Fprintf(&r.builder, ` class="language-%s"`, html.EscapeString(language))
 	}
+	r.builder.WriteString(`>`)
 
 	r.builder.WriteString(html.EscapeString(item.text))
 
