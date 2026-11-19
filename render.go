@@ -54,28 +54,29 @@ func (app *App) renderPageHTML(page *Page, data []byte) ([]byte, error) {
 	return app.renderLayout(state), nil
 }
 
-func (app *App) resolveDestination(page *Page, raw string, _ bool) string {
+func (app *App) resolveDestination(page *Page, raw string, image bool) string {
+	if image {
+		return raw
+	}
+
 	parsed, err := url.Parse(raw)
-	if err != nil || parsed.Scheme != "" || parsed.Host != "" || strings.HasPrefix(raw, "//") {
+	if err != nil || parsed.Scheme != "" || parsed.Host != "" || parsed.Path == "" || strings.HasPrefix(raw, "//") {
 		return raw
 	}
 
-	target := parsed.Path
-	if target == "" {
+	switch strings.ToLower(path.Ext(parsed.Path)) {
+	case ".html", ".md", ".markdown":
+		parsed.Path = strings.TrimSuffix(parsed.Path, path.Ext(parsed.Path))
+	case "":
+	default:
 		return raw
 	}
 
-	if !strings.HasPrefix(target, "/") {
-		target = path.Join("/", path.Dir(page.SourcePath), target)
+	if !strings.HasPrefix(parsed.Path, "/") {
+		parsed.Path = path.Join(path.Dir(page.SourcePath), parsed.Path)
 	}
 
-	if extension := strings.ToLower(path.Ext(target)); extension == ".md" || extension == ".markdown" {
-		target = app.fmtURL(strings.TrimSuffix(target, path.Ext(target)))
-	}
-
-	parsed.Path = target
-	parsed.RawPath = ""
-
+	parsed.Path = app.fmtURL(parsed.Path)
 	return parsed.String()
 }
 

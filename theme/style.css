@@ -494,6 +494,10 @@ svg {
 
 .sidebar-group-label,
 .sidebar-group-link {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 4px;
 	flex: 1;
 	min-width: 0;
 	padding: 5px 10px;

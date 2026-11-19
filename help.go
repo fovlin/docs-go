@@ -19,6 +19,10 @@ options:
   -a, --addr <ip>       dev listen address (default: localhost)
   -p, --port <port>     dev listen port (default: 7280)
   -f, --force           overwrite scaffold files in init
+  -t, --time            add timestamps to log lines
+  --color               force colored log output
+  -v, --version         print the version and exit
+  -h, --help            print usage and exit
 
 examples:
   docs-go init my-docs

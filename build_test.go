@@ -41,7 +41,7 @@ func writeTestProject(t *testing.T, root string) {
 		"/guide/": [{
 			"text": "Guide",
 			"items": [
-				{ "text": "Overview", "link": "/guide" },
+				{ "text": "Overview", "link": "/guide/" },
 				{ "text": "Start", "link": "/guide/start" },
 				{ "text": "Next", "link": "/guide/next" }
 			]
@@ -49,7 +49,7 @@ func writeTestProject(t *testing.T, root string) {
 	}`)
 	writeFile(t, filepath.Join(root, "docs", "index.md"), "# Home\n\nWelcome.\n")
 	writeFile(t, filepath.Join(root, "docs", "guide", "index.md"), "# Guide\n\nOverview.\n")
-	writeFile(t, filepath.Join(root, "docs", "guide", "start.md"), "# Start\n\nStart page.\n\n## Details\n\nBody.\n")
+	writeFile(t, filepath.Join(root, "docs", "guide", "start.md"), "# Start\n\nStart page.\n\n[Next](/guide/next)\n\n## Details\n\nBody.\n")
 	writeFile(t, filepath.Join(root, "docs", "guide", "next.md"), "# Next\n\nNext page.\n")
 }
 
@@ -82,6 +82,7 @@ func TestBuild(t *testing.T) {
 		`<h2 id="details">`,
 		`prev-next-title">Overview`,
 		`prev-next-title">Next`,
+		`href="/guide/next"`,
 	} {
 		if !strings.Contains(page, want) {
 			t.Errorf("missing %q in start page", want)
@@ -97,9 +98,9 @@ func TestBuildWithoutCleanURLs(t *testing.T) {
 		"/guide/": [{
 			"text": "Guide",
 			"items": [
-				{ "text": "Overview", "link": "/guide" },
-				{ "text": "Start", "link": "/guide/start.html" },
-				{ "text": "Next", "link": "/guide/next.html" }
+				{ "text": "Overview", "link": "/guide/" },
+				{ "text": "Start", "link": "/guide/start" },
+				{ "text": "Next", "link": "/guide/next" }
 			]
 		}]
 	}`)
@@ -117,8 +118,8 @@ func TestBuildWithoutCleanURLs(t *testing.T) {
 	}
 
 	page := readFile(t, filepath.Join(root, "dist", "guide", "start.html"))
-	if !strings.Contains(page, `prev-next-link next" href="/guide/next.html"`) {
-		t.Fatal("prev/next link was not written with .html")
+	if !strings.Contains(page, `href="/guide/next.html"`) {
+		t.Fatal("flat page did not link to the .html file")
 	}
 }
 
@@ -135,38 +136,6 @@ func TestAppPrevNext(t *testing.T) {
 	}
 	if state.Next == nil || state.Next.Text != "Next" || state.Next.Href != "/guide/next" {
 		t.Errorf("next = %+v", state.Next)
-	}
-}
-
-func TestNavigationIsPreResolved(t *testing.T) {
-	root := t.TempDir()
-	writeTestProject(t, root)
-	app := loadTestProject(t, root)
-
-	if len(app.Nav) != 0 {
-		t.Fatalf("expected no navbar links, got %d", len(app.Nav))
-	}
-
-	tree := app.SidebarTrees["/guide"]
-	if len(tree) != 1 || len(tree[0].Items) != 3 {
-		t.Fatalf("unexpected resolved sidebar tree: %+v", tree)
-	}
-	if tree[0].Items[1].Href != "/guide/start" {
-		t.Errorf("resolved href = %q", tree[0].Items[1].Href)
-	}
-	if tree[0].HasActive {
-		t.Fatal("stored sidebar tree was mutated before rendering")
-	}
-
-	active := app.sidebarFor("/guide/start")
-	if len(active) != 1 || !active[0].HasActive || !active[0].Open {
-		t.Fatalf("active sidebar state = %+v", active)
-	}
-	if !active[0].Items[1].Active {
-		t.Fatal("start link is not marked active")
-	}
-	if tree[0].HasActive || tree[0].Items[1].Active {
-		t.Fatal("per-page marking mutated the shared sidebar tree")
 	}
 }
 

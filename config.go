@@ -16,6 +16,7 @@ const (
 	defaultOutDir      = "dist"
 	defaultPublicDir   = "public"
 	defaultTitle       = "DOCS_GO"
+	defaultLogoFile    = "/docs-go.svg"
 	defaultDescription = "Documentation built with docs-go."
 	defaultLang        = "en"
 )
@@ -155,6 +156,7 @@ func (config *Config) normalize() {
 	config.OutDir = firstNonEmpty(config.OutDir, defaultOutDir)
 	config.PublicDir = firstNonEmpty(config.PublicDir, defaultPublicDir)
 	config.SidebarFile = firstNonEmpty(config.SidebarFile, defaultSidebarFile)
+	config.Logo = firstNonEmpty(config.Logo, defaultLogoFile)
 
 	config.SiteURL = strings.TrimSpace(config.SiteURL)
 	config.Logo = strings.TrimSpace(config.Logo)

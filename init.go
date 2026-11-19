@@ -14,12 +14,13 @@ import (
 //go:embed theme scaffold
 var themeFS embed.FS
 
-const version = "1.0.2"
+const version = "1.1.0"
 
 func runInit(root string, force bool, configName string) error {
 	if info, err := os.Stat(root); err == nil && !info.IsDir() {
 		return fmt.Errorf("not a directory: %s", root)
 	}
+
 	if err := os.MkdirAll(root, 0o755); err != nil {
 		return fmt.Errorf("create project: %w", err)
 	}
@@ -27,6 +28,7 @@ func runInit(root string, force bool, configName string) error {
 	if configName == "" {
 		configName = defaultConfigFile
 	}
+
 	configTarget := configName
 	if !filepath.IsAbs(configTarget) {
 		configTarget = filepath.Join(root, configTarget)
@@ -47,6 +49,7 @@ func runInit(root string, force bool, configName string) error {
 		if relative == defaultConfigFile {
 			target = configTarget
 		}
+
 		if info, err := os.Stat(target); err == nil && !force {
 			if info.IsDir() {
 				return fmt.Errorf("scaffold target %s is a directory", target)
@@ -63,6 +66,7 @@ func runInit(root string, force bool, configName string) error {
 		if err := os.MkdirAll(filepath.Dir(target), 0o755); err != nil {
 			return err
 		}
+
 		if err := os.WriteFile(target, data, 0o644); err != nil {
 			return fmt.Errorf("write %s: %w", relative, err)
 		}
@@ -77,15 +81,13 @@ func runInit(root string, force bool, configName string) error {
 	if err := os.MkdirAll(filepath.Join(root, defaultPublicDir), 0o755); err != nil {
 		return fmt.Errorf("create public: %w", err)
 	}
-	relative, err := filepath.Rel("./", root)
-	record.Info(fmt.Sprintf("initialized %s", relative))
+	record.Info(fmt.Sprintf("initialized %s", root))
 	for _, name := range created {
-		record.Info(fmt.Sprintf("  create  %s\n", name))
+		record.Info("  create  ", name)
 	}
 	for _, name := range kept {
-		record.Info(fmt.Sprintf("  keep    %s\n", name))
+		record.Info("  keep    ", name)
 	}
-	record.Info(fmt.Sprintf("\nnext:\n  cd %s\n  docs-go dev\n", relative))
 
 	return nil
 }

@@ -25,28 +25,23 @@ var (
 	subCmdArgs []string
 )
 
+var commands = map[string]func() error{
+	"build": commandBuild,
+	"dev":   commandDev,
+	"init":  commandInit,
+}
+
 func main() {
 	if err := initProgram(); err != nil {
 		record.Error(err)
 	}
 
-	var err error
-	switch cmd {
-	case "build":
-		err = commandBuild()
-	case "dev", "serve":
-		err = commandDev()
-	case "init":
-		err = commandInit()
-	default:
-		if len(subCmdArgs) > 0 {
-			err = fmt.Errorf("unknown command: %s", subCmdArgs[0])
-		} else {
-			err = fmt.Errorf("unknown command: %s", cmd)
-		}
+	cmdFunc, ok := commands[cmd]
+	if !ok {
+		record.Error("unknown command:", subCmdArgs[0])
 	}
 
-	if err != nil {
+	if err := cmdFunc(); err != nil {
 		record.Error(err)
 	}
 }
@@ -105,8 +100,7 @@ func resolveCommand(args []string) (string, []string) {
 		return "build", nil
 	}
 
-	switch args[0] {
-	case "build", "dev", "serve", "init":
+	if _, ok := commands[args[0]]; ok {
 		return args[0], args[1:]
 	}
 

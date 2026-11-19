@@ -1,5 +1,5 @@
 {
-  "title": "Docs",
+  "title": "DOCS_GO",
   "description": "A documentation site built with docs-go.",
   "lang": "en",
   "edit_link": "https://github.com/fovlin/docs-go/",
@@ -7,9 +7,10 @@
   "out_dir": "dist",
   "public_dir": "public",
   "sidebar_file": "config/sidebar.json",
+  "clean_urls": true,
   "logo": "/docs-go.svg",
   "nav": [
-    { "text": "Guide", "link": "/guide/getting-started" }
+    { "text": "Guide", "link": "/guide/getting-started", "active_match": "/guide/" }
   ],
   "social_links": [
     { "icon": "github", "link": "https://github.com/fovlin/docs-go", "label": "GitHub" }

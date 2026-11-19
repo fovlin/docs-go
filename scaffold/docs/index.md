@@ -1,29 +1,30 @@
 # Docs
 
-A small documentation site generated from the markdown files in `docs/`.
-
-::: tip
-Edit the files under `docs/` and run `docs-go dev` while you write. The page you are reading was generated from `docs/index.md`.
-:::
+docs-go generates this site from the Markdown files in `docs/`.
 
 ## Quick start
 
 ~~~bash
-docs-go build      # write the site to dist/
-docs-go dev      # render on demand and preview on :7280
+docs-go init my-docs
+cd my-docs
+docs-go dev
 ~~~
+
+`docs-go build` writes the site to `dist/`.
 
 ## Where things live
 
 | Path | Purpose |
 | --- | --- |
 | `docs/` | Markdown source. Folders become URL segments. |
-| `config/docs.json` | Site settings: title, navigation, theme. |
-| `config/sidebar.json` | Sidebar entries, kept out of the main config. |
-| `public/` | Static files copied to the root of the output. |
-| `dist/` | Generated site. Never edit it by hand. |
+| `config/docs.json` | Site settings. |
+| `config/sidebar.json` | Sidebar entries. |
+| `public/` | Files copied to the root of the output. |
+| `dist/` | Generated site. |
 
-## Next steps
+## Guide
 
+- [Overview](/guide/)
 - [Getting started](/guide/getting-started)
 - [Configuration](/guide/configuration)
+- [Markdown](/guide/markdown)

@@ -14,7 +14,7 @@ func (app *App) applyNavigation(state *RenderState) {
 	var walk func([]*SidebarNode)
 	walk = func(nodes []*SidebarNode) {
 		for _, node := range nodes {
-			if node.Href != "" && strings.HasPrefix(node.Href, "/") {
+			if node.Href != "" && strings.HasPrefix(node.Href, "/") && len(node.Items) == 0 {
 				links = append(links, node)
 			}
 			walk(node.Items)
@@ -39,28 +39,34 @@ func (app *App) applyNavigation(state *RenderState) {
 }
 
 func (app *App) fmtURL(source string) string {
-	source = strings.TrimPrefix(path.Clean("/"+source), "/")
-
-	switch {
-	case source == "" || source == "index":
-		return "/"
-	case strings.HasSuffix(source, "/index"):
-		return "/" + strings.TrimSuffix(source, "/index")
-	case app.CleanURLs:
-		return "/" + source
-	default:
-		return "/" + source + ".html"
+	parsed, err := url.Parse(source)
+	if err != nil || parsed.Scheme != "" || parsed.Host != "" || parsed.Path == "" {
+		return source
 	}
+
+	source = strings.TrimPrefix(path.Clean(source), "/")
+
+	if app.CleanURLs || source == "" || strings.HasSuffix(parsed.Path, "/") {
+		return "/" + source
+	}
+
+	return "/" + source + ".html"
 }
 
-func (app *App) fmtPageURL(source string) (string, string) {
+func (app *App) fmtPagePathInfo(source string) (string, string) {
+	if source == "" || source == "index" {
+		return "/", "index.html"
+	}
+
+	if strings.HasSuffix(source, "/index") {
+		source = strings.TrimSuffix(source, "/index")
+		return app.fmtURL(source + "/"), source + "/index.html"
+	}
+
 	url := app.fmtURL(source)
 	outPath := strings.TrimPrefix(url, "/")
 
-	switch {
-	case outPath == "":
-		outPath = "index.html"
-	case app.CleanURLs || strings.HasSuffix(source, "/index"):
+	if app.CleanURLs {
 		outPath += "/index.html"
 	}
 
@@ -79,22 +85,14 @@ func fmtConfigPath(fsPath string) string {
 func (app *App) fileForURL(sitePath string) (string, []byte, error) {
 	relative := strings.TrimPrefix(path.Clean("/"+sitePath), "/")
 
-	bases := make([]string, 0, 2)
 	switch {
-	case relative == "" || relative == "index.html":
-		bases = append(bases, "index")
-	case strings.HasSuffix(relative, "/index.html"):
-		dir := strings.TrimSuffix(relative, "/index.html")
-		bases = append(bases, dir+"/index", dir)
-	case app.CleanURLs:
-		bases = append(bases, relative+"/index", relative)
-	case strings.HasSuffix(strings.ToLower(relative), ".html"):
-		bases = append(bases, relative[:len(relative)-len(".html")])
-	default:
-		bases = append(bases, relative+"/index")
+	case strings.HasSuffix(relative, "/index.html") || relative == "index.html":
+		relative = strings.TrimSuffix(strings.TrimSuffix(relative, ".html"), "/index")
+	case !app.CleanURLs && strings.HasSuffix(strings.ToLower(relative), ".html"):
+		relative = relative[:len(relative)-len(".html")]
 	}
 
-	for _, base := range bases {
+	for _, base := range []string{path.Join(relative, "index"), relative} {
 		for _, extension := range []string{".md", ".markdown", ".MD", ".Markdown"} {
 			file := filepath.Join(app.SrcDir, filepath.FromSlash(base+extension))
 			if data, err := os.ReadFile(file); err == nil {
@@ -133,18 +131,4 @@ func escapePath(sitePath string) string {
 	}
 
 	return (&url.URL{Path: sitePath}).EscapedPath()
-}
-
-func canonicalURL(target string) string {
-	trailing := strings.HasSuffix(target, "/")
-	cleaned := path.Clean("/" + target)
-	if cleaned == "." {
-		cleaned = "/"
-	}
-
-	if trailing && cleaned != "/" {
-		cleaned += "/"
-	}
-
-	return cleaned
 }

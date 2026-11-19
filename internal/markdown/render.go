@@ -268,8 +268,6 @@ func (r *renderer) image(item inline) {
 	r.builder.WriteString(">")
 }
 
-// safeDestination resolves a destination and neutralises unsafe schemes.
-// Links fall back to "#"; images fall back to an empty src.
 func (r *renderer) safeDestination(value string, image bool) string {
 	if r.resolve != nil {
 		value = r.resolve(value, image)

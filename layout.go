@@ -195,7 +195,7 @@ func sidebarItems(nodes []*SidebarNode) string {
 
 	for _, node := range nodes {
 		b.WriteString("<li class=\"sidebar-entry")
-		if node.Active || node.HasActive {
+		if node.Active {
 			b.WriteString(" is-active")
 		}
 		b.WriteString("\">\n")
@@ -212,17 +212,19 @@ func sidebarItems(nodes []*SidebarNode) string {
 				rowMeta = fmt.Sprintf(" role=\"button\" tabindex=\"0\" aria-expanded=\"%s\"", open)
 			}
 			fmt.Fprintf(&b, "<div class=\"sidebar-group%s\" data-open=\"%s\">\n<div class=\"%s\"%s>\n", openClass(node), open, rowClass, rowMeta)
+			arrow := "<span class=\"sidebar-arrow\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"m9 6 6 6-6 6\"/></svg></span>\n"
 			if node.Href != "" {
 				active := ""
 				if node.Active {
 					active = " active"
 				}
-				fmt.Fprintf(&b, "<a class=\"sidebar-group-link%s\" href=\"%s\"", active, escapeHTML(node.Href))
-				fmt.Fprintf(&b, ">%s</a>\n", escapeHTML(node.Text))
+				fmt.Fprintf(&b, "<a class=\"sidebar-group-link%s\" href=\"%s\">%s", active, escapeHTML(node.Href), escapeHTML(node.Text))
+				b.WriteString(arrow)
+				b.WriteString("</a>\n")
 			} else {
 				fmt.Fprintf(&b, "<span class=\"sidebar-group-label\">%s</span>\n", escapeHTML(node.Text))
+				b.WriteString(arrow)
 			}
-			b.WriteString("<span class=\"sidebar-arrow\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"m9 6 6 6-6 6\"/></svg></span>\n")
 			b.WriteString("</div>\n<div class=\"sidebar-group-items\">\n")
 			b.WriteString(sidebarItems(node.Items))
 			b.WriteString("</div>\n</div>\n")

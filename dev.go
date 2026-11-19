@@ -77,8 +77,6 @@ func (dev *Dev) handle(w http.ResponseWriter, r *http.Request) {
 	app.serveDev(w, r)
 }
 
-// snapshot returns the current App. It reloads when the config or sidebar file
-// changed and keeps the previous snapshot if the reload fails.
 func (dev *Dev) snapshot() *App {
 	app := dev.app.Load()
 	if app == nil {
@@ -112,8 +110,6 @@ func (dev *Dev) snapshot() *App {
 	reloaded, err := LoadApp(dev.root, dev.configFile, dev.srcFlag, dev.outFlag)
 	if err != nil {
 		record.Info(fmt.Sprintf("reload: %v", err))
-		// Remember the failed stamps so an unchanged broken config is not
-		// retried on every request; any later edit triggers a reload again.
 		dev.stamps.Store(&devStamps{config: configStamp, sidebar: sidebarStamp, src: srcStamp})
 		return app
 	}

@@ -23,8 +23,6 @@ type SidebarItem struct {
 type SidebarConfig struct {
 	Sections map[string][]SidebarItem
 	keys     []string
-	file     string
-	found    bool
 }
 
 // SidebarNode is the resolved tree consumed by the layout.
@@ -32,7 +30,6 @@ type SidebarNode struct {
 	Text      string
 	Href      string
 	Active    bool
-	HasActive bool
 	Collapsed bool
 	Open      bool
 	Items     []*SidebarNode
@@ -41,7 +38,6 @@ type SidebarNode struct {
 func loadSidebar(file string) (*SidebarConfig, error) {
 	config := &SidebarConfig{
 		Sections: make(map[string][]SidebarItem),
-		file:     file,
 	}
 
 	data, err := os.ReadFile(file)
@@ -52,7 +48,6 @@ func loadSidebar(file string) (*SidebarConfig, error) {
 		return nil, fmt.Errorf("read sidebar %s: %w", file, err)
 	}
 
-	config.found = true
 	trimmed := bytes.TrimSpace(data)
 	if len(trimmed) == 0 {
 		return config, nil
@@ -83,6 +78,7 @@ func loadSidebar(file string) (*SidebarConfig, error) {
 		config.Sections[prefix] = items
 		config.keys = append(config.keys, prefix)
 	}
+
 	sort.Slice(config.keys, func(i, j int) bool {
 		if len(config.keys[i]) != len(config.keys[j]) {
 			return len(config.keys[i]) > len(config.keys[j])
@@ -136,35 +132,74 @@ func (app *App) sidebarFor(pageURL string) []*SidebarNode {
 	}
 
 	nodes := app.matchedSidebar(pageURL)
-	return app.markSidebar(nodes, pageURL)
+	marked, _ := app.markSidebar(nodes, pageURL)
+	return marked
 }
 
-func (app *App) markSidebar(nodes []*SidebarNode, pageURL string) []*SidebarNode {
+func (app *App) markSidebar(nodes []*SidebarNode, pageURL string) ([]*SidebarNode, bool) {
 	if len(nodes) == 0 {
-		return nil
+		return nil, false
 	}
 
 	marked := make([]*SidebarNode, 0, len(nodes))
+	anyActive := false
 	for _, node := range nodes {
 		clone := *node
+		clone.Active = node.Href == pageURL
 
+		childActive := false
 		if len(clone.Items) != 0 {
-			clone.Items = app.markSidebar(node.Items, pageURL)
+			clone.Items, childActive = app.markSidebar(node.Items, pageURL)
+			clone.Open = !clone.Collapsed || clone.Active || childActive
 		}
 
-		clone.Active = node.Href != "" && node.Href == pageURL
-
-		clone.HasActive = false
-		for _, child := range clone.Items {
-			if child.Active || child.HasActive {
-				clone.HasActive = true
-				break
-			}
+		if clone.Active || childActive {
+			anyActive = true
 		}
 
-		clone.Open = !clone.Collapsed || clone.Active || clone.HasActive
 		marked = append(marked, &clone)
 	}
 
-	return marked
+	return marked, anyActive
+}
+
+func (app *App) resolveSidebarTrees() map[string][]*SidebarNode {
+	trees := make(map[string][]*SidebarNode)
+
+	if app.Sidebar == nil {
+		return trees
+	}
+
+	for key, items := range app.Sidebar.Sections {
+		nodes := make([]*SidebarNode, 0, len(items))
+		for index := range items {
+			if node := app.resolveSidebarNode(items[index]); node != nil {
+				nodes = append(nodes, node)
+			}
+		}
+
+		trees[key] = nodes
+	}
+
+	return trees
+}
+
+func (app *App) resolveSidebarNode(item SidebarItem) *SidebarNode {
+	node := &SidebarNode{
+		Href:      app.fmtURL(item.Link),
+		Text:      strings.TrimSpace(item.Text),
+		Collapsed: item.Collapsed,
+	}
+
+	for index := range item.Items {
+		if child := app.resolveSidebarNode(item.Items[index]); child != nil {
+			node.Items = append(node.Items, child)
+		}
+	}
+
+	if node.Href == "" && len(node.Items) == 0 {
+		return nil
+	}
+
+	return node
 }

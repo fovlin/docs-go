@@ -141,8 +141,8 @@ func TestDevRoutesMatchBuild(t *testing.T) {
 		"/guide/":           http.StatusOK,
 		"/guide/start.html": http.StatusOK,
 		"/guide/index.html": http.StatusOK,
-		"/guide/start/":     http.StatusNotFound,
-		"/guide/start":      http.StatusNotFound,
+		"/guide/start/":     http.StatusOK,
+		"/guide/start":      http.StatusOK,
 		"/guide/start.md":   http.StatusNotFound,
 	} {
 		if got := devGet(t, plain, target).Code; got != want {
