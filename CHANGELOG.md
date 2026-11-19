@@ -4,7 +4,7 @@
 
 - Page links in Markdown (`.md`, `.html`, extensionless) are rewritten to the page URL of the current layout; anchors, queries, images and other file extensions are left alone.
 - `nav[].active_match` is honoured: a nav entry is active when the page URL starts with the given prefix.
-- Previous and next links skip sidebar group entries and follow leaf entries only.
+- Previous and next links include a sidebar group’s own link when it has one.
 - Sidebar group arrows are buttons beside the link and toggle the group; groups with a link still navigate from the label.
 - The palette is warm: every colour is a root variable, and the browser theme colour follows the page background.
 - The theme toggle locks an explicit choice and returns to following the system theme when the chosen theme matches it.

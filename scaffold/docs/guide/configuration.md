@@ -160,7 +160,7 @@ An item has these fields:
 
 A group with a `link` renders the link and a separate arrow button; the button toggles the group while the link follows the page. A group without a `link` toggles from anywhere on its row. A group is open when it is not collapsed, when its own link is the current page, or when a descendant is the current page. Links are written without an extension and normalized like other site links; an index page is linked by its directory.
 
-Previous and next links follow the leaf entries of the current sidebar tree in order. Group entries with children are skipped.
+Previous and next links follow the sidebar entries that point at a site page, in order, including a group’s own link. Entries without a site link are skipped.
 
 ## Page URLs
 

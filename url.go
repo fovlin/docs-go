@@ -14,7 +14,7 @@ func (app *App) applyNavigation(state *RenderState) {
 	var walk func([]*SidebarNode)
 	walk = func(nodes []*SidebarNode) {
 		for _, node := range nodes {
-			if node.Href != "" && strings.HasPrefix(node.Href, "/") && len(node.Items) == 0 {
+			if node.Href != "" && strings.HasPrefix(node.Href, "/") {
 				links = append(links, node)
 			}
 			walk(node.Items)
