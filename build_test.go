@@ -336,3 +336,22 @@ func TestBuildRejectsOutputOverlap(t *testing.T) {
 		t.Fatalf("expected output overlap error, got %v", err)
 	}
 }
+
+
+func TestLayoutBuild(t *testing.T) {
+	list := compileLayout(`
+		{{ @fovlin }} xxx a b c {{@kksk}} 
+		    {{ @love_you }}
+	`)
+
+	if len(list) < 3 {
+		t.Fatal("except: >3, recive:", len(list))
+	}
+
+	if list[1].name != "fovlin" {
+		t.Fatal("except: fovlin, recive:", list[1].name)
+	}
+	if list[3].name != "love_you" {
+		t.Fatal("except: love_you, recive:", list[3].name)
+	}
+}
