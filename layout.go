@@ -202,56 +202,33 @@ func sidebarHTML(page *RenderState) string {
 }
 
 func sidebarItems(nodes []*SidebarNode) string {
+	const arrowIcon = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>`
+
 	var b strings.Builder
 	b.WriteString("<ul class=\"sidebar-list\">")
 
 	for _, node := range nodes {
-		b.WriteString("<li class=\"sidebar-entry")
+		entryClass := "sidebar-entry"
+		active := ""
 		if node.Active {
-			b.WriteString(" is-active")
+			entryClass += " is-active"
+			active = " active"
 		}
-		b.WriteString("\">")
+		fmt.Fprintf(&b, "<li class=\"%s\">", entryClass)
 
-		if len(node.Items) > 0 {
-			open := "false"
-			if node.Open {
-				open = "true"
-			}
-			rowClass := "sidebar-group-row"
-			rowMeta := ""
-			if node.Href == "" {
-				rowClass += " is-toggle"
-				rowMeta = fmt.Sprintf(" role=\"button\" tabindex=\"0\" aria-expanded=\"%s\"", open)
-			}
-			fmt.Fprintf(&b, "<div class=\"sidebar-group%s\" data-open=\"%s\"><div class=\"%s\"%s>", openClass(node), open, rowClass, rowMeta)
-			arrow := "<span class=\"sidebar-arrow\" aria-hidden=\"true\"><svg viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.8\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"m9 6 6 6-6 6\"/></svg></span>"
-			if node.Href != "" {
-				active := ""
-				if node.Active {
-					active = " active"
-				}
-				fmt.Fprintf(&b, "<a class=\"sidebar-group-link%s\" href=\"%s\">%s", active, escapeHTML(node.Href), escapeHTML(node.Text))
-				b.WriteString(arrow)
-				b.WriteString("</a>")
-			} else {
-				fmt.Fprintf(&b, "<span class=\"sidebar-group-label\">%s</span>", escapeHTML(node.Text))
-				b.WriteString(arrow)
-			}
-			b.WriteString("</div><div class=\"sidebar-group-items\">")
-			b.WriteString(sidebarItems(node.Items))
-			b.WriteString("</div></div>")
+		if len(node.Items) == 0 {
+			fmt.Fprintf(&b, "<a class=\"sidebar-link%s\" href=\"%s\"><span>%s</span></a></li>", active, escapeHTML(node.Href), escapeHTML(node.Text))
+			continue
+		}
+
+		fmt.Fprintf(&b, "<div class=\"sidebar-group%s\">", openClass(node))
+		if node.Href != "" {
+			fmt.Fprintf(&b, "<div class=\"sidebar-group-row\"><a class=\"sidebar-group-link%s\" href=\"%s\">%s</a>", active, escapeHTML(node.Href), escapeHTML(node.Text))
+			fmt.Fprintf(&b, "<button class=\"sidebar-arrow\" type=\"button\" aria-expanded=\"%t\" aria-label=\"%s\">%s</button></div>", node.Open, escapeHTML(node.Text), arrowIcon)
 		} else {
-			active := ""
-			if node.Active {
-				active = " active"
-			}
-			fmt.Fprintf(&b, "<a class=\"sidebar-link%s\" href=\"%s\"", active, escapeHTML(node.Href))
-
-			fmt.Fprintf(&b, "><span>%s</span>", escapeHTML(node.Text))
-			b.WriteString("</a>")
+			fmt.Fprintf(&b, "<div class=\"sidebar-group-row is-toggle\" role=\"button\" tabindex=\"0\" aria-expanded=\"%t\"><span class=\"sidebar-group-label\">%s</span><span class=\"sidebar-arrow\" aria-hidden=\"true\">%s</span></div>", node.Open, escapeHTML(node.Text), arrowIcon)
 		}
-
-		b.WriteString("</li>")
+		fmt.Fprintf(&b, "<div class=\"sidebar-group-items\">%s</div></div></li>", sidebarItems(node.Items))
 	}
 
 	b.WriteString("</ul>")

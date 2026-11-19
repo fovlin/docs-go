@@ -13,7 +13,6 @@
 
 	var THEME_KEY = "docs-go-theme";
 	var root = document.documentElement;
-	var appearance = root.getAttribute("data-appearance") || "auto";
 
 	function systemTheme() {
 		if (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches) {
@@ -28,14 +27,10 @@
 		themeButton.addEventListener("click", function () {
 			var system = systemTheme();
 			var next = (root.dataset.theme || system) === "dark" ? "light" : "dark";
-			var followSystem = appearance === "auto" && next === system;
+			var followSystem = next === system;
 
 			try {
-				if (followSystem) {
-					localStorage.removeItem(THEME_KEY);
-				} else {
-					localStorage.setItem(THEME_KEY, next);
-				}
+				localStorage.setItem(THEME_KEY, followSystem ? "system" : next);
 			} catch (error) {
 				/* ignore */
 			}
@@ -48,7 +43,7 @@
 
 			var meta = document.querySelector('meta[name="theme-color"]');
 			if (meta) {
-				meta.setAttribute("content", next === "dark" ? "#101010" : "#ffffff");
+				meta.setAttribute("content", getComputedStyle(document.body).backgroundColor);
 			}
 		});
 	}
@@ -108,17 +103,23 @@
 
 	/* collapsible sidebar groups */
 
-	document.querySelectorAll(".sidebar-group-row.is-toggle").forEach(function (row) {
-		function toggle() {
-			var group = row.closest(".sidebar-group");
-			if (!group) {
-				return;
-			}
+	document.querySelectorAll(".sidebar-group-row").forEach(function (row) {
+		var group = row.closest(".sidebar-group");
+		if (!group) {
+			return;
+		}
 
+		function toggle() {
 			var open = !group.classList.contains("is-open");
 			group.classList.toggle("is-open", open);
-			group.setAttribute("data-open", open ? "true" : "false");
-			row.setAttribute("aria-expanded", open ? "true" : "false");
+			var control = row.querySelector("[aria-expanded]") || row;
+			control.setAttribute("aria-expanded", open ? "true" : "false");
+		}
+
+		var arrow = row.querySelector("button.sidebar-arrow");
+		if (arrow) {
+			arrow.addEventListener("click", toggle);
+			return;
 		}
 
 		row.addEventListener("click", toggle);

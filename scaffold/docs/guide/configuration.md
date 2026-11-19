@@ -62,7 +62,7 @@ Every field is optional. Paths are resolved against the project directory; absol
 | --- | --- | --- |
 | `logo` | `/docs-go.svg` | Image URL in the topbar. A site path is resolved under `public_dir`; an absolute URL is used as is. The default file is written by `init`. |
 | `favicon` | empty | Favicon URL. When empty the built-in favicon is served from `/favicon.ico`. |
-| `appearance` | `auto` | Initial theme: `auto`, `light` or `dark`. Other values fall back to `auto`. |
+| `appearance` | `auto` | Initial theme for visitors without a stored choice: `auto`, `light` or `dark`. Other values fall back to `auto`. The theme toggle stores an explicit choice and returns to the system theme when the chosen theme matches it. |
 
 ### Navigation
 
@@ -158,7 +158,7 @@ An item has these fields:
 | `collapsed` | When `true` the group starts closed. Default `false`. |
 | `items` | Child entries. |
 
-A group with a `link` renders the link and an arrow inside it; a group without a `link` toggles its children. A group is open when it is not collapsed, when its own link is the current page, or when a descendant is the current page. Links are written without an extension and normalized like other site links; an index page is linked by its directory.
+A group with a `link` renders the link and a separate arrow button; the button toggles the group while the link follows the page. A group without a `link` toggles from anywhere on its row. A group is open when it is not collapsed, when its own link is the current page, or when a descendant is the current page. Links are written without an extension and normalized like other site links; an index page is linked by its directory.
 
 Previous and next links follow the leaf entries of the current sidebar tree in order. Group entries with children are skipped.
 

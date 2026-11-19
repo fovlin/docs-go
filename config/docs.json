@@ -10,7 +10,7 @@
   "clean_urls": true,
   "logo": "/docs-go.svg",
   "nav": [
-    { "text": "Guide", "link": "/guide/", "active_match": "/guide/" }
+    { "text": "Guide", "link": "/guide/" }
   ],
   "social_links": [
     { "icon": "github", "link": "https://github.com/fovlin/docs-go", "label": "GitHub" }

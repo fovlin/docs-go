@@ -92,13 +92,7 @@ func (app *App) fileForURL(sitePath string) (string, []byte, error) {
 		relative = relative[:len(relative)-len(".html")]
 	}
 
-	bases := []string{relative}
-
-	if strings.HasSuffix(relative, "/") {
-		bases = append(bases, relative + "index")
-	} else {
-		bases = append(bases, relative + "/index")
-	}
+	bases := []string{relative, path.Join(relative, "index")}
 
 	for _, base := range bases {
 		for _, extension := range []string{".md", ".markdown", ".MD", ".Markdown"} {
@@ -110,9 +104,6 @@ func (app *App) fileForURL(sitePath string) (string, []byte, error) {
 	}
 
 	names := []string{relative, path.Join(relative, "index.html")}
-	if relative == "" {
-		names = []string{"index.html"}
-	}
 
 	for _, root := range []string{app.SrcDir, app.PublicDir} {
 		for _, name := range names {

@@ -24,7 +24,7 @@ Link destinations are normalized before they are written:
 
 - destinations with a scheme or host (`http`, `https`, `mailto`, `//`) and in-page anchors (`#`) are left unchanged;
 - other destinations are site paths: a leading `/` is expected, a `.md` or `.html` extension is removed, and the result is converted to the page URL;
-- a trailing `/` is removed, so an index page is linked as `/guide/` and renders as `/guide`;
+- an index page is addressed by its directory, so `/guide/` and `/guide/index` both render as `/guide`; a trailing `/` is removed;
 - query strings and fragments are preserved.
 
 Links are not checked. The author is responsible for pointing them at the page that should be reached.
