@@ -1,17 +1,17 @@
 :root {
-	--bg: light-dark(#fffdfa, #0f0e0c);
+	--bg: light-dark(#fffdfa, #0f0d0a);
 	--surface: light-dark(#efedea, #181715);
 	--surface-2: light-dark(#e8e6e2, #1f1e1c);
 	--border: light-dark(#dfddda, #282725);
 	--border-strong: light-dark(#cfcdca, #3f3e3c);
-	--text: light-dark(#080705, #efeae0);
+	--text: light-dark(#030200, #fffdfa);
 	--muted: light-dark(#4d4c4a, #cfcac0);
 	--faint: light-dark(#686765, #8f8a80);
 	--accent: light-dark(#af6f00, #ffaf00);
 	--accent-hover: light-dark(#8f5a00, #cf7f00);
 	--accent-soft: light-dark(#8a55000f, #ffaf000f);
 	--on-accent: light-dark(#ffffff, #181715);
-	--link: light-dark(#af6f00, #ffcf6f);
+	--link: light-dark(#af6f00, #ffbf4f);
 	--amber: light-dark(#8f5f00, #ffaf00);
 	--red: light-dark(#a3352b, #e08b8b);
 	--red-soft: light-dark(#af1f001f, #ef8f6f1f);
