@@ -9,7 +9,7 @@
 	--faint: light-dark(#686765, #8f8a80);
 	--accent: light-dark(#af6f00, #ffaf00);
 	--accent-hover: light-dark(#8f5a00, #cf7f00);
-	--accent-soft: light-dark(#8a55000f, #ffaf001f);
+	--accent-soft: light-dark(#8a55000f, #ffaf000f);
 	--on-accent: light-dark(#ffffff, #181715);
 	--link: light-dark(#af6f00, #ffcf6f);
 	--amber: light-dark(#8f5f00, #ffaf00);
