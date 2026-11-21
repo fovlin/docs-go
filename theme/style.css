@@ -1,9 +1,9 @@
 :root {
-	--bg: light-dark(#fff8f0, #181818);
-	--surface: light-dark(#f8f0e8, #202020);
-	--surface-2: light-dark(#efe8e0, #282828);
-	--border: light-dark(#bfb8b0, #383838);
-	--border-strong: light-dark(#9f9890, #4a4a4a);
+	--bg: light-dark(#fffdfb, #181818);
+	--surface: light-dark(#f8f6f4, #202020);
+	--surface-2: light-dark(#efedeb, #282828);
+	--border: light-dark(#bfbdbb, #383838);
+	--border-strong: light-dark(#9f9d9b, #4a4a4a);
 	--title: light-dark(#080808, #ffffff);
 	--text: light-dark(#181818, #ffffff);
 	--muted: light-dark(#484848, #b3b3b3);
@@ -20,7 +20,7 @@
 	--overlay: rgba(0, 0, 0, 0.5);
 	--selection-bg: light-dark(#bf6f004f, #ff8f004f);
 	--code: light-dark(#080808, #f8f8f8);
-	--code-bg: light-dark(#efe8e0, #282828);
+	--code-bg: light-dark(#efedeb, #282828);
 	--scrollbar: var(--border);
 	--scrollbar-hover: var(--border-strong);
 	--code-block-bg: var(--code-bg);
