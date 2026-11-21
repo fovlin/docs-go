@@ -1,27 +1,28 @@
 :root {
-	--bg: light-dark(#fffdfa, #0f0d0a);
-	--surface: light-dark(#efedea, #181715);
-	--surface-2: light-dark(#e8e6e2, #1f1e1c);
-	--border: light-dark(#dfddda, #282725);
-	--border-strong: light-dark(#cfcdca, #3f3e3c);
-	--text: light-dark(#030200, #fffdfa);
-	--muted: light-dark(#4d4c4a, #cfcac0);
-	--faint: light-dark(#686765, #8f8a80);
-	--accent: light-dark(#af6f00, #ffaf00);
-	--accent-hover: light-dark(#8f5a00, #cf7f00);
-	--accent-soft: light-dark(#8a55000f, #ffaf000f);
-	--on-accent: light-dark(#ffffff, #181715);
-	--link: light-dark(#af6f00, #ffbf4f);
-	--amber: light-dark(#8f5f00, #ffaf00);
+	--bg: light-dark(#fff8f0, #181614);
+	--surface: light-dark(#f8f0e8, #1f1b18);
+	--surface-2: light-dark(#efe8e0, #282624);
+	--border: light-dark(#bfb8b0, #383634);
+	--border-strong: light-dark(#cfc8c0, #484644);
+	--title: light-dark(#080604, #fff8f0);
+	--text: light-dark(#181614, #efe8e0);
+	--muted: light-dark(#484644, #cfc8c0);
+	--faint: light-dark(#8f8880, #8f8880);
+	--accent: light-dark(#bf6f00, #ff8f00);
+	--accent-hover: light-dark(#ff6f00, #ffb300);
+	--accent-soft: light-dark(#ff8f000f, #ff8f000f);
+	--on-accent: light-dark(#1f1508, #181614);
+	--link: light-dark(#8f4f00, #ffaf4f);
+	--amber: light-dark(#8f4f00, #ff8f00);
 	--red: light-dark(#a3352b, #e08b8b);
-	--red-soft: light-dark(#af1f001f, #ef8f6f1f);
+	--red-soft: light-dark(#a3352b1f, #e08b8b1f);
 	--green: light-dark(#2f6f2f, #afcfaf);
-	--scrollbar: light-dark(#dfddda, #282725);
-	--scrollbar-hover: light-dark(#bfbdba, #484745);
-	--overlay: rgba(0, 0, 0, 0.42);
-	--selection-bg: light-dark(#8f5f00, #ffaf00);
-	--selection-text: light-dark(#f8f6f2, #181715);
-	--code-bg: light-dark(#efefef, #1f1f1f);
+	--overlay: rgba(0, 0, 0, 0.5);
+	--selection-bg: light-dark(#bf6f004f, #ff8f004f);
+	--code: light-dark(#0f0f0f, #efefef);
+	--code-bg: light-dark(#efe8e0, #282624);
+	--scrollbar: var(--border);
+	--scrollbar-hover: var(--border-strong);
 	--code-block-bg: var(--code-bg);
 	--code-border: var(--code-bg);
 	--warning-bg: var(--accent-soft);
@@ -102,7 +103,6 @@ svg {
 
 ::selection {
 	background: var(--selection-bg);
-	color: var(--selection-text);
 }
 
 ::-webkit-scrollbar {
@@ -601,7 +601,7 @@ svg {
 .doc h6 {
 	position: relative;
 	margin: 2em 0 0.65em;
-	color: var(--text);
+	color: var(--title);
 	font-weight: 650;
 	line-height: 1.3;
 	letter-spacing: -0.015em;
@@ -723,7 +723,7 @@ svg {
 	border: 1px solid var(--code-border);
 	border-radius: var(--radius-xs);
 	background: var(--code-bg);
-	color: var(--text);
+	color: var(--code);
 	font-family: var(--mono);
 	font-size: 0.875em;
 }
