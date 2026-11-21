@@ -1,13 +1,13 @@
 :root {
-	--bg: light-dark(#fff8f0, #181614);
-	--surface: light-dark(#f8f0e8, #1f1b18);
-	--surface-2: light-dark(#efe8e0, #282624);
-	--border: light-dark(#bfb8b0, #383634);
-	--border-strong: light-dark(#cfc8c0, #484644);
-	--title: light-dark(#080604, #fff8f0);
-	--text: light-dark(#181614, #efe8e0);
-	--muted: light-dark(#484644, #cfc8c0);
-	--faint: light-dark(#8f8880, #8f8880);
+	--bg: light-dark(#fff8f0, #181818);
+	--surface: light-dark(#f8f0e8, #202020);
+	--surface-2: light-dark(#efe8e0, #282828);
+	--border: light-dark(#bfb8b0, #383838);
+	--border-strong: light-dark(#9f9890, #4a4a4a);
+	--title: light-dark(#080808, #ffffff);
+	--text: light-dark(#181818, #ffffff);
+	--muted: light-dark(#484848, #b3b3b3);
+	--faint: light-dark(#707070, #808080);
 	--accent: light-dark(#bf6f00, #ff8f00);
 	--accent-hover: light-dark(#ff6f00, #ffb300);
 	--accent-soft: light-dark(#ff8f000f, #ff8f000f);
@@ -19,8 +19,8 @@
 	--green: light-dark(#2f6f2f, #afcfaf);
 	--overlay: rgba(0, 0, 0, 0.5);
 	--selection-bg: light-dark(#bf6f004f, #ff8f004f);
-	--code: light-dark(#0f0f0f, #efefef);
-	--code-bg: light-dark(#efe8e0, #282624);
+	--code: light-dark(#080808, #f8f8f8);
+	--code-bg: light-dark(#efe8e0, #282828);
 	--scrollbar: var(--border);
 	--scrollbar-hover: var(--border-strong);
 	--code-block-bg: var(--code-bg);
@@ -1315,7 +1315,7 @@ svg {
 
 .btn-primary {
 	border: 1.6px solid var(--accent);
-	background: var(--bg);
+	background: var(--accent);
 	color: var(--on-accent);
 }
 
