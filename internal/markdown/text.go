@@ -67,22 +67,14 @@ func plainInlines(inlines []inline) string {
 }
 
 func firstParagraphText(blocks []block) string {
-	var walk func([]block) string
-
-	walk = func(items []block) string {
-		for _, item := range items {
-			switch item.kind {
-			case blockParagraph:
-				return plainInlines(item.inlines)
-			case blockBlockquote, blockList, blockListItem, blockContainer:
-				if text := walk(item.children); text != "" {
-					return text
-				}
-			}
+	for _, item := range blocks {
+		if item.kind == blockParagraph {
+			return plainInlines(item.inlines)
 		}
-
-		return ""
+		if text := firstParagraphText(item.children); text != "" {
+			return text
+		}
 	}
 
-	return walk(blocks)
+	return ""
 }

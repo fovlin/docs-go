@@ -93,17 +93,12 @@ func fenceStart(line string) (byte, int, string, bool) {
 		return 0, 0, "", false
 	}
 
-	end := indent
-	for end < len(line) && line[end] == char {
-		end++
-	}
-
-	length := end - indent
+	length := runLength(line, indent, char)
 	if length < 3 {
 		return 0, 0, "", false
 	}
 
-	info := strings.TrimSpace(line[end:])
+	info := strings.TrimSpace(line[indent+length:])
 	if char == '`' && strings.Contains(info, "`") {
 		return 0, 0, "", false
 	}
@@ -117,16 +112,12 @@ func fenceClose(line string, char byte, length int) bool {
 		return false
 	}
 
-	end := indent
-	for end < len(line) && line[end] == char {
-		end++
-	}
-
-	if end-indent < length {
+	run := runLength(line, indent, char)
+	if run < length {
 		return false
 	}
 
-	return strings.TrimSpace(line[end:]) == ""
+	return strings.TrimSpace(line[indent+run:]) == ""
 }
 
 func headingStart(line string) (int, string, bool) {
@@ -135,16 +126,12 @@ func headingStart(line string) (int, string, bool) {
 		return 0, "", false
 	}
 
-	end := indent
-	for end < len(line) && line[end] == '#' {
-		end++
-	}
-
-	level := end - indent
+	level := runLength(line, indent, '#')
 	if level < 1 || level > 6 {
 		return 0, "", false
 	}
 
+	end := indent + level
 	if end < len(line) && line[end] != ' ' && line[end] != '\t' {
 		return 0, "", false
 	}
@@ -248,18 +235,9 @@ func isContainerClose(line string) bool {
 
 func tableDelimiter(line string) ([]string, bool) {
 	cells := splitTableRow(line)
-	if len(cells) == 0 {
-		return nil, false
-	}
-
 	aligns := make([]string, len(cells))
 
 	for index, cell := range cells {
-		cell = strings.TrimSpace(cell)
-		if len(cell) < 3 {
-			return nil, false
-		}
-
 		left := strings.HasPrefix(cell, ":")
 		right := strings.HasSuffix(cell, ":")
 		core := strings.Trim(cell, ":")
@@ -281,14 +259,16 @@ func tableDelimiter(line string) ([]string, bool) {
 	return aligns, true
 }
 
-func isTableStart(lines []string, index int) bool {
+// tableStart reports whether a table starts here and returns its column
+// alignments. The delimiter row is parsed once for both checks.
+func tableStart(lines []string, index int) ([]string, bool) {
 	if index+1 >= len(lines) || !isTableRaw(lines[index]) {
-		return false
+		return nil, false
 	}
 
 	aligns, ok := tableDelimiter(lines[index+1])
 
-	return ok && len(aligns) == len(splitTableRow(lines[index]))
+	return aligns, ok && len(aligns) == len(splitTableRow(lines[index]))
 }
 
 func isTableRaw(line string) bool {
@@ -297,9 +277,6 @@ func isTableRaw(line string) bool {
 	}
 
 	trimmed := strings.TrimSpace(line)
-	if trimmed == "" {
-		return false
-	}
 
 	switch trimmed[0] {
 	case '#', '>', '+', '*':

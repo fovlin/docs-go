@@ -153,12 +153,9 @@ func matchBlockStart(lines []string, start int) (blockSpec, bool) {
 		return spec, true
 	}
 
-	if isTableStart(lines, start) {
+	if aligns, ok := tableStart(lines, start); ok {
 		spec.kind = blockTable
-		spec.tableAligns, _ = tableDelimiter(lines[start+1])
-		if len(spec.tableAligns) == 0 {
-			spec.tableAligns = []string{""}
-		}
+		spec.tableAligns = aligns
 		return spec, true
 	}
 
@@ -198,55 +195,51 @@ func scanBlockquoteEnd(lines []string, start int) int {
 	return end
 }
 
+// scanListEnd consumes the sibling items of one list. Blank lines between
+// items are skipped here rather than stored in the item ranges.
 func scanListEnd(lines []string, spec blockSpec) (int, []listItemSpec) {
 	first := spec.listMarker
 	items := make([]listItemSpec, 0, 4)
-	baseIndent := first.indent
 	end := spec.start
-	next := spec.start
+	index := spec.start
 
-	for next < len(lines) {
-		marker, ok := parseListMarker(lines[next])
-		if !ok || marker.indent < baseIndent || !sameListMarker(marker, first) {
+	for index < len(lines) {
+		marker, ok := parseListMarker(lines[index])
+		if !ok || marker.indent < first.indent || !sameListMarker(marker, first) {
 			break
 		}
 
-		itemStart := next
-		itemEnd := next
-		next++
-
-		for next < len(lines) {
-			if strings.TrimSpace(lines[next]) == "" {
-				blankEnd := next
-				for blankEnd+1 < len(lines) && strings.TrimSpace(lines[blankEnd+1]) == "" {
-					blankEnd++
-				}
-				itemEnd = blankEnd
-				if blankEnd+1 >= len(lines) {
-					next = len(lines)
-					break
-				}
-				if indentWidth(lines[blankEnd+1]) < marker.indent+2 {
-					next = blankEnd + 1
-					break
-				}
-				itemEnd = blankEnd + 1
-				next = blankEnd + 2
-				continue
-			}
-
-			if indentWidth(lines[next]) < marker.indent+2 {
-				break
-			}
-			itemEnd = next
-			next++
-		}
-
-		items = append(items, listItemSpec{start: itemStart, end: itemEnd, marker: marker})
+		itemEnd := scanListItemEnd(lines, index, marker)
+		items = append(items, listItemSpec{start: index, end: itemEnd, marker: marker})
 		end = itemEnd
+		index = itemEnd + 1
+
+		for index < len(lines) && strings.TrimSpace(lines[index]) == "" {
+			index++
+		}
 	}
 
 	return end, items
+}
+
+// scanListItemEnd returns the last content line of the item that starts at
+// start. A blank line does not end the item by itself: the next non-blank
+// line must still be indented as item content. Trailing blanks are never
+// stored in the item range.
+func scanListItemEnd(lines []string, start int, marker listMarker) int {
+	end := start
+
+	for index := start + 1; index < len(lines); index++ {
+		if strings.TrimSpace(lines[index]) == "" {
+			continue
+		}
+		if indentWidth(lines[index]) < marker.indent+2 {
+			break
+		}
+		end = index
+	}
+
+	return end
 }
 
 func scanTableEnd(lines []string, start int) int {
