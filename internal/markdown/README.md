@@ -43,7 +43,8 @@ Use `docs-go dev` to preview.
 
 ## Links and images
 
-Inline links and images are supported.
+Inline links and images are supported. Only punctuation is unescaped in a
+destination, so a backslash before a letter is preserved.
 
 ```md
 [Getting started](/guide/getting-started)
@@ -64,6 +65,14 @@ Start quoted lines with `>`; blank lines separate quotes.
 ## Lists
 
 Bullets may be `-`, `*` or `+`; ordered markers may use `.` or `)`.
+Item content starts after the marker and exactly one following space or tab;
+any further indentation belongs to the content, so it can open a nested list
+or an indented code block. Continuation lines are stripped at the column where
+the content begins, which depends on the marker width and tab stops.
+
+A blank line inside an item or between items makes the list loose: every direct
+paragraph is then wrapped in `<p>`. In a tight list the first paragraph of an
+item is rendered inline.
 
 ```md
 - First item
@@ -148,7 +157,11 @@ Press <kbd>Ctrl</kbd> + <kbd>C</kbd>.
   a plain newline as a space.
 - Indented code can interrupt a paragraph.
 - A blank line starts a new block; there is no lazy blockquote continuation.
+- A table header or body row ends at the next block opener rather than at a
+  fixed character test.
 - Tables split cells before inline parsing, so `|` inside code spans is not protected.
+- A container closes only at a block boundary; a `:::` indented into list-item
+  content is content, not a terminator.
 - Emphasis matching is greedy and does not implement CommonMark's delimiter-stack rules;
   malformed delimiter runs degrade to text.
 - Only ATX headings are supported; no setext headings, autolinks, reference links,

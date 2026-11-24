@@ -126,8 +126,16 @@ func TestBlankLineContinuesList(t *testing.T) {
 		t.Errorf("blank line should not end the list: %s", html)
 	}
 
-	if !strings.Contains(html, "<li>one</li>") || !strings.Contains(html, "<li>two</li>") {
+	if !strings.Contains(html, "<li><p>one</p>") || !strings.Contains(html, "<li><p>two</p>") {
 		t.Errorf("list items missing: %s", html)
+	}
+}
+
+func TestListItemLooseParagraph(t *testing.T) {
+	html := render("- one\n\n  two\n")
+
+	if !strings.Contains(html, "<li><p>one</p>\n<p>two</p>") {
+		t.Errorf("blank line did not separate item paragraphs: %s", html)
 	}
 }
 
@@ -137,6 +145,36 @@ func TestEmptyListMarkerDoesNotPanic(t *testing.T) {
 		if strings.Contains(html, "<ul>") {
 			t.Errorf("%q should not become a list: %s", source, html)
 		}
+	}
+}
+
+func TestUnknownInlineRendersFallback(t *testing.T) {
+	document := &Document{blocks: []block{&paragraphBlock{
+		inlines: []inline{{
+			kind:     inlineKind(999),
+			text:     "tail",
+			children: []inline{{kind: inlineText, text: "child"}},
+		}},
+	}}}
+
+	html := document.Render(nil)
+	if !strings.Contains(html, "child") || !strings.Contains(html, "tail") {
+		t.Fatalf("unknown inline dropped content: %s", html)
+	}
+}
+
+func TestEmptyListAndTableRender(t *testing.T) {
+	document := &Document{blocks: []block{
+		&listBlock{items: []*listItem{{}}},
+		&tableBlock{},
+	}}
+
+	html := document.Render(nil)
+	if !strings.Contains(html, "<li></li>") {
+		t.Errorf("empty list item did not render: %s", html)
+	}
+	if !strings.Contains(html, "<table>\n</table>") {
+		t.Errorf("empty table did not render: %s", html)
 	}
 }
 
@@ -214,34 +252,6 @@ func TestFirstParagraph(t *testing.T) {
 	}
 }
 
-func TestRenderFallback(t *testing.T) {
-	document := &Document{blocks: []block{{
-		kind: blockKind(999),
-		children: []block{{
-			kind:    blockParagraph,
-			inlines: []inline{{kind: inlineText, text: "fallback"}},
-		}},
-	}}}
-
-	if !strings.Contains(string(document.Render(nil)), "fallback") {
-		t.Fatal("unknown block did not render its children")
-	}
-
-	document = &Document{blocks: []block{{
-		kind: blockParagraph,
-		inlines: []inline{{
-			kind:     inlineKind(999),
-			text:     "tail",
-			children: []inline{{kind: inlineText, text: "child"}},
-		}},
-	}}}
-
-	html := string(document.Render(nil))
-	if !strings.Contains(html, "child") || !strings.Contains(html, "tail") {
-		t.Fatalf("unknown inline dropped content: %s", html)
-	}
-}
-
 func FuzzParse(f *testing.F) {
 	for _, seed := range []string{
 		"# heading\n\nparagraph\n",
@@ -250,6 +260,10 @@ func FuzzParse(f *testing.F) {
 		"```go\nfmt.Println(\"x\")\n```\n",
 		"    indented code\n",
 		"::: tip\ncontent\n:::\n",
+		":::tip\n",
+		"| a | b |\n| --- | --- |\n*em* | x\n",
+		"-  \n",
+		"1.     code\n",
 	} {
 		f.Add(seed)
 	}
@@ -258,6 +272,26 @@ func FuzzParse(f *testing.F) {
 		document := Parse([]byte(source))
 		_ = document.Render(nil)
 	})
+}
+
+func TestUnclosedBacktickRunStaysLiteral(t *testing.T) {
+	html := render("``x`\n")
+
+	if strings.Contains(html, "<code>") || !strings.Contains(html, "``x`") {
+		t.Errorf("unclosed backtick run was parsed as code: %s", html)
+	}
+}
+
+func TestLinkDestinationEscapes(t *testing.T) {
+	backslash := render("[x](/a\\b)\n")
+	if !strings.Contains(backslash, `href="/a\b"`) {
+		t.Errorf("non-punctuation backslash was dropped: %s", backslash)
+	}
+
+	paren := render("[x](/a\\)b)\n")
+	if !strings.Contains(paren, `href="/a)b"`) {
+		t.Errorf("escaped punctuation was not unescaped: %s", paren)
+	}
 }
 
 func TestTextStartingWithAngleIsParagraph(t *testing.T) {

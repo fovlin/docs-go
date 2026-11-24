@@ -43,9 +43,9 @@ func (app *App) renderPageHTML(page *Page, data []byte) ([]byte, error) {
 	state.Nav = app.navFor(page.URL)
 	state.Sidebar = app.sidebarFor(page.URL)
 	app.applyNavigation(state)
-	state.Body = string(document.Render(func(destination string, image bool) string {
+	state.Body = document.Render(func(destination string, image bool) string {
 		return app.resolveDestination(page, destination, image)
-	}))
+	})
 	state.Outline = filterOutline(document.Headings, app.Outline.Level)
 	state.EditURL = app.editURL(page)
 	state.LastUpdated = app.lastUpdated(page)

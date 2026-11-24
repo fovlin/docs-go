@@ -1,193 +1,202 @@
 package markdown
 
 import (
+	"regexp"
 	"strconv"
 	"strings"
 )
 
+// blockKind is the kind of block that starts on a source line.
+type blockKind int
+
+const (
+	blockParagraph blockKind = iota
+	blockFence
+	blockIndentedCode
+	blockHeading
+	blockThematicBreak
+	blockBlockquote
+	blockList
+	blockContainer
+	blockTable
+)
+
+// lineKind classifies the block that starts on one line. A table is only
+// identifiable together with its delimiter line and is resolved by blockKindAt.
+func lineKind(line string) blockKind {
+	if _, _, _, ok := fenceStart(line); ok {
+		return blockFence
+	}
+	if width, _ := leadingSpace(line); width >= 4 {
+		return blockIndentedCode
+	}
+	if _, _, ok := headingStart(line); ok {
+		return blockHeading
+	}
+	if thematicBreak(line) {
+		return blockThematicBreak
+	}
+	if blockquoteStart(line) {
+		return blockBlockquote
+	}
+	if _, ok := parseListMarker(line); ok {
+		return blockList
+	}
+	if _, _, ok := containerStart(line); ok {
+		return blockContainer
+	}
+	return blockParagraph
+}
+
+// blockKindAt classifies the block at index, resolving the one construct that
+// needs more than a single line: a table header and its delimiter.
+func blockKindAt(lines []string, index int) blockKind {
+	kind := lineKind(lines[index])
+	if kind == blockParagraph {
+		if _, _, ok := tableStart(lines, index); ok {
+			return blockTable
+		}
+	}
+	return kind
+}
+
+// listMarker describes one list item marker as recognised on a line.
 type listMarker struct {
 	ordered bool
 	marker  byte
 	start   int
 	indent  int
 	content string
+
+	// contentIndent is the visual column where the item's content begins. It
+	// is the indent used to strip continuation lines.
+	contentIndent int
 }
 
-func sameListMarker(a, b listMarker) bool {
-	return a.ordered == b.ordered && a.marker == b.marker
+// continues reports whether m keeps the same list as first.
+func (m listMarker) continues(first listMarker) bool {
+	return m.indent >= first.indent && m.ordered == first.ordered && m.marker == first.marker
 }
 
+// listMarkerPattern captures the marker, the single space or tab separating it
+// from the content, and the content itself.
+var listMarkerPattern = regexp.MustCompile(`^([-+*]|[0-9]{1,9}[.)])([ \t])(.*\S.*)$`)
+
+// parseListMarker recognises an unordered bullet (-, * or +) or an ordered
+// marker (one to nine digits followed by . or )). Exactly one space or tab is
+// consumed; the rest is content and keeps its own leading whitespace.
 func parseListMarker(line string) (listMarker, bool) {
-	indent := blockIndent(line)
-	if indent > 3 || indent >= len(line) {
+	indent, index := leadingSpace(line)
+	if indent > 3 {
 		return listMarker{}, false
 	}
 
-	index := indent
-
-	switch line[index] {
-	case '-', '*', '+':
-		next := index + 1
-		if next < len(line) && line[next] != ' ' && line[next] != '\t' {
-			return listMarker{}, false
-		}
-		next++
-		if next >= len(line) {
-			return listMarker{}, false
-		}
-
-		return listMarker{
-			marker:  line[index],
-			indent:  indent,
-			content: line[next:],
-		}, true
-	}
-
-	if line[index] < '0' || line[index] > '9' {
+	match := listMarkerPattern.FindStringSubmatch(line[index:])
+	if match == nil || strings.TrimSpace(match[3]) == "" {
 		return listMarker{}, false
 	}
 
-	end := index
-	for end < len(line) && end-index < 9 && line[end] >= '0' && line[end] <= '9' {
-		end++
+	separator := 1
+	if match[2][0] == '\t' {
+		separator = 4 - (indent+len(match[1]))%4
 	}
 
-	if end >= len(line) || (line[end] != '.' && line[end] != ')') {
-		return listMarker{}, false
+	marker := listMarker{
+		indent:        indent,
+		content:       match[3],
+		contentIndent: indent + len(match[1]) + separator,
+	}
+	if match[1][0] >= '0' && match[1][0] <= '9' {
+		marker.ordered = true
+		marker.start, _ = strconv.Atoi(match[1][:len(match[1])-1])
+		marker.marker = match[1][len(match[1])-1]
+	} else {
+		marker.marker = match[1][0]
 	}
 
-	start, err := strconv.Atoi(line[index:end])
-	if err != nil {
-		return listMarker{}, false
-	}
-
-	marker := line[end]
-	end++
-	if end < len(line) && line[end] != ' ' && line[end] != '\t' {
-		return listMarker{}, false
-	}
-
-	end = skipSpaces(line, end)
-	if end >= len(line) {
-		return listMarker{}, false
-	}
-
-	return listMarker{
-		ordered: true,
-		marker:  marker,
-		start:   start,
-		indent:  indent,
-		content: line[end:],
-	}, true
+	return marker, true
 }
 
 // fenceStart parses an opening backtick or tilde fence.
-func fenceStart(line string) (byte, int, string, bool) {
-	indent := blockIndent(line)
-	if indent > 3 || indent >= len(line) {
+func fenceStart(line string) (char byte, length int, info string, ok bool) {
+	indent, index := leadingSpace(line)
+	if indent > 3 || index >= len(line) {
 		return 0, 0, "", false
 	}
 
-	char := line[indent]
+	char = line[index]
 	if char != '`' && char != '~' {
 		return 0, 0, "", false
 	}
-
-	length := runLength(line, indent, char)
+	length = runLength(line, index, char)
 	if length < 3 {
 		return 0, 0, "", false
 	}
-
-	info := strings.TrimSpace(line[indent+length:])
-	if char == '`' && strings.Contains(info, "`") {
+	info = strings.TrimSpace(line[index+length:])
+	if char == '`' && strings.ContainsRune(info, '`') {
 		return 0, 0, "", false
 	}
-
 	return char, length, info, true
 }
 
-func fenceClose(line string, char byte, length int) bool {
-	indent := blockIndent(line)
-	if indent > 3 || indent >= len(line) || line[indent] != char {
-		return false
+// fenceEnd finds the first line at or after start that closes the fence: at
+// most three spaces of indent, at least length fence characters, and nothing
+// but whitespace after them. Unclosed fences return len(lines) and false.
+func fenceEnd(lines []string, start int, char byte, length int) (int, bool) {
+	for index := start; index < len(lines); index++ {
+		line := lines[index]
+		indent, at := leadingSpace(line)
+		if indent > 3 || at >= len(line) || line[at] != char {
+			continue
+		}
+		if run := runLength(line, at, char); run >= length && strings.TrimSpace(line[at+run:]) == "" {
+			return index, true
+		}
 	}
-
-	run := runLength(line, indent, char)
-	if run < length {
-		return false
-	}
-
-	return strings.TrimSpace(line[indent+run:]) == ""
+	return len(lines), false
 }
 
 func headingStart(line string) (int, string, bool) {
-	indent := blockIndent(line)
-	if indent > 3 || indent >= len(line) {
+	indent, index := leadingSpace(line)
+	if indent > 3 || index >= len(line) {
 		return 0, "", false
 	}
 
-	level := runLength(line, indent, '#')
+	level := runLength(line, index, '#')
 	if level < 1 || level > 6 {
 		return 0, "", false
 	}
-
-	end := indent + level
+	end := index + level
 	if end < len(line) && line[end] != ' ' && line[end] != '\t' {
 		return 0, "", false
 	}
 
 	text := strings.TrimSpace(line[end:])
-
 	if trimmed := strings.TrimRight(text, "#"); len(trimmed) < len(text) {
 		if trimmed == "" || strings.HasSuffix(trimmed, " ") || strings.HasSuffix(trimmed, "\t") {
 			text = strings.TrimSpace(trimmed)
 		}
 	}
-
 	return level, text, true
 }
 
+// thematicBreakPattern matches three or more of the same break character,
+// optionally separated by spaces or tabs.
+var thematicBreakPattern = regexp.MustCompile(`^ {0,3}(?:(?:\*[ \t]*){3,}|(?:-[ \t]*){3,}|(?:_[ \t]*){3,})$`)
+
 func thematicBreak(line string) bool {
-	index := blockIndent(line)
-	if index > 3 {
-		return false
-	}
-
-	var char byte
-	count := 0
-
-	for ; index < len(line); index++ {
-		value := line[index]
-		if value == ' ' || value == '\t' {
-			continue
-		}
-
-		if char == 0 {
-			if value != '*' && value != '-' && value != '_' {
-				return false
-			}
-			char = value
-		}
-
-		if value != char {
-			return false
-		}
-
-		count++
-	}
-
-	return count >= 3
+	return thematicBreakPattern.MatchString(line)
 }
 
 func blockquoteStart(line string) bool {
-	index := blockIndent(line)
+	indent, index := leadingSpace(line)
 
-	return index <= 3 && index < len(line) && line[index] == '>'
+	return indent <= 3 && index < len(line) && line[index] == '>'
 }
 
 func stripBlockquote(line string) string {
-	index := blockIndent(line)
-	if index > 3 || index >= len(line) || line[index] != '>' {
+	indent, index := leadingSpace(line)
+	if indent > 3 || index >= len(line) || line[index] != '>' {
 		return line
 	}
 
@@ -195,7 +204,6 @@ func stripBlockquote(line string) string {
 	if index < len(line) && (line[index] == ' ' || line[index] == '\t') {
 		index++
 	}
-
 	return line[index:]
 }
 
@@ -204,54 +212,61 @@ var containerTitles = map[string]string{
 	"warning": "WARNING", "danger": "DANGER", "details": "Details",
 }
 
-func containerStart(line string) (string, string, bool) {
-	indent := blockIndent(line)
-	if indent > 3 || !strings.HasPrefix(line[indent:], ":::") {
+func containerStart(line string) (kind, title string, ok bool) {
+	indent, index := leadingSpace(line)
+	if indent > 3 || !strings.HasPrefix(line[index:], ":::") {
 		return "", "", false
 	}
 
-	rest := strings.TrimSpace(line[indent+3:])
-	if rest == "" {
-		return "", "", false
-	}
-
+	rest := strings.TrimSpace(line[index+3:])
 	fields := strings.Fields(rest)
-	name := strings.ToLower(fields[0])
-	title, ok := containerTitles[name]
+	if len(fields) == 0 {
+		return "", "", false
+	}
+
+	kind = strings.ToLower(fields[0])
+	title, ok = containerTitles[kind]
 	if !ok {
 		return "", "", false
 	}
-
-	if custom := strings.TrimSpace(strings.TrimPrefix(rest, fields[0])); custom != "" {
+	if custom := strings.TrimSpace(rest[len(fields[0]):]); custom != "" {
 		title = custom
 	}
-
-	return name, title, true
+	return kind, title, true
 }
 
 func isContainerClose(line string) bool {
-	return indentWidth(line) <= 3 && strings.TrimSpace(line) == ":::"
+	indent, _ := leadingSpace(line)
+
+	return indent <= 3 && strings.TrimSpace(line) == ":::"
 }
+
+// isTableRow reports whether a line can be a table row: it contains a pipe and
+// does not start any other block, which is what ends a table body.
+func isTableRow(line string) bool {
+	return strings.ContainsRune(line, '|') && lineKind(line) == blockParagraph
+}
+
+// tableAlignPattern matches one delimiter cell: optional colons around at
+// least three dashes.
+var tableAlignPattern = regexp.MustCompile(`^:?-{3,}:?$`)
 
 func tableDelimiter(line string) ([]string, bool) {
 	cells := splitTableRow(line)
 	aligns := make([]string, len(cells))
 
 	for index, cell := range cells {
-		left := strings.HasPrefix(cell, ":")
-		right := strings.HasSuffix(cell, ":")
-		core := strings.Trim(cell, ":")
-
-		if len(core) < 3 || strings.Trim(core, "-") != "" {
+		if !tableAlignPattern.MatchString(cell) {
 			return nil, false
 		}
-
 		switch {
-		case left && right:
-			aligns[index] = "center"
-		case left:
-			aligns[index] = "left"
-		case right:
+		case strings.HasPrefix(cell, ":"):
+			if strings.HasSuffix(cell, ":") {
+				aligns[index] = "center"
+			} else {
+				aligns[index] = "left"
+			}
+		case strings.HasSuffix(cell, ":"):
 			aligns[index] = "right"
 		}
 	}
@@ -259,129 +274,113 @@ func tableDelimiter(line string) ([]string, bool) {
 	return aligns, true
 }
 
-// tableStart reports whether a table starts here and returns its column
-// alignments. The delimiter row is parsed once for both checks.
-func tableStart(lines []string, index int) ([]string, bool) {
-	if index+1 >= len(lines) || !isTableRaw(lines[index]) {
-		return nil, false
+// tableStart reports whether a table starts here, returning its header cells
+// and column alignments.
+func tableStart(lines []string, index int) (header, aligns []string, ok bool) {
+	if index+1 >= len(lines) || !isTableRow(lines[index]) {
+		return nil, nil, false
 	}
 
-	aligns, ok := tableDelimiter(lines[index+1])
-
-	return aligns, ok && len(aligns) == len(splitTableRow(lines[index]))
-}
-
-func isTableRaw(line string) bool {
-	if !strings.ContainsRune(line, '|') {
-		return false
+	header = splitTableRow(lines[index])
+	if aligns, ok = tableDelimiter(lines[index+1]); !ok || len(aligns) != len(header) {
+		return nil, nil, false
 	}
-
-	trimmed := strings.TrimSpace(line)
-
-	switch trimmed[0] {
-	case '#', '>', '+', '*':
-		return false
-	case '-':
-		return len(trimmed) == 1 || (trimmed[1] != ' ' && trimmed[1] != '\t')
-	}
-
-	return true
+	return header, aligns, true
 }
 
 func splitTableRow(line string) []string {
 	line = strings.TrimSpace(line)
 
-	cells := make([]string, 0, 4)
-	var builder strings.Builder
-	for index := 0; index < len(line); index++ {
-		value := line[index]
-		switch {
-		case value == '\\' && index+1 < len(line):
-			if line[index+1] == '|' {
-				builder.WriteByte('|')
-			} else {
-				builder.WriteByte('\\')
-				builder.WriteByte(line[index+1])
-			}
-			index++
-
-		// skip prefix and suffix with '|'
-		case (index == 0 || index == len(line)-1) && value == '|':
-			continue
-		case value == '|':
-			cells = append(cells, strings.TrimSpace(builder.String()))
-			builder.Reset()
-		default:
-			builder.WriteByte(value)
+	if strings.HasPrefix(line, "|") {
+		line = line[1:]
+	}
+	// A trailing pipe is a border only when no backslash escapes it.
+	if strings.HasSuffix(line, "|") {
+		backslashes := 0
+		for index := len(line) - 2; index >= 0 && line[index] == '\\'; index-- {
+			backslashes++
+		}
+		if backslashes%2 == 0 {
+			line = line[:len(line)-1]
 		}
 	}
 
-	cells = append(cells, strings.TrimSpace(builder.String()))
-	return cells
-}
+	cells := make([]string, 0, 4)
+	var cell strings.Builder
 
-// blockIndent returns the leading-space width of a block marker, capped at 4.
-// Callers use it to reject indentation beyond three spaces; it is not a
-// general-purpose indentation counter.
-func blockIndent(line string) int {
-	index := 0
-	for index < len(line) && index < 4 && line[index] == ' ' {
-		index++
+	for index := 0; index < len(line); index++ {
+		switch {
+		case line[index] == '\\' && index+1 < len(line):
+			if line[index+1] == '|' {
+				cell.WriteByte('|')
+			} else {
+				cell.WriteString(line[index : index+2])
+			}
+			index++
+
+		case line[index] == '|':
+			cells = append(cells, strings.TrimSpace(cell.String()))
+			cell.Reset()
+
+		default:
+			cell.WriteByte(line[index])
+		}
 	}
 
-	return index
+	return append(cells, strings.TrimSpace(cell.String()))
 }
 
-func indentWidth(line string) int {
-	width := 0
-
-	for _, char := range line {
-		switch char {
+// leadingSpace returns the visual width of the line's leading whitespace and
+// the byte index where its content starts. Tab stops are four columns wide.
+func leadingSpace(line string) (width, index int) {
+	for index < len(line) {
+		switch line[index] {
 		case ' ':
 			width++
 		case '\t':
 			width += 4 - width%4
 		default:
-			return width
+			return width, index
 		}
+		index++
 	}
-
-	return width
+	return width, index
 }
 
 func stripIndent(line string, width int) string {
 	consumed := 0
 
-	for index, char := range line {
+	for index := 0; index < len(line); index++ {
 		if consumed >= width {
 			return line[index:]
 		}
-
-		switch char {
+		switch line[index] {
 		case ' ':
 			consumed++
 		case '\t':
-			consumed += 4 - consumed%4
+			next := consumed + 4 - consumed%4
+			if next > width {
+				return strings.Repeat(" ", next-width) + line[index+1:]
+			}
+			consumed = next
 		default:
 			return line[index:]
 		}
 	}
-
 	return ""
 }
 
-func skipSpaces(line string, index int) int {
-	for index < len(line) && (line[index] == ' ' || line[index] == '\t') {
+func skipSpaces(value string, index int) int {
+	for index < len(value) && (value[index] == ' ' || value[index] == '\t' || value[index] == '\n') {
 		index++
 	}
-
 	return index
 }
 
-func trimTrailingBlank(lines []string) []string {
-	for len(lines) > 0 && strings.TrimSpace(lines[len(lines)-1]) == "" {
-		lines = lines[:len(lines)-1]
+func runLength(value string, start int, char byte) int {
+	end := start
+	for end < len(value) && value[end] == char {
+		end++
 	}
-
-	return lines
+	return end - start
 }

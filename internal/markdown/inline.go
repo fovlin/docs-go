@@ -2,6 +2,7 @@ package markdown
 
 import (
 	"html"
+	"regexp"
 	"strings"
 	"unicode"
 	"unicode/utf8"
@@ -16,8 +17,7 @@ const (
 	inlineStrong
 	inlineLink
 	inlineImage
-	inlineSoftBreak
-	inlineHardBreak
+	inlineBreak
 	inlineHTML
 )
 
@@ -29,122 +29,101 @@ type inline struct {
 	children []inline
 }
 
+// inlineTagPattern matches one inline HTML tag; quoted attribute values may
+// contain '>'.
+var inlineTagPattern = regexp.MustCompile(`^</?[A-Za-z][A-Za-z0-9-]*(?:\s(?:[^<>"']|"[^"]*"|'[^']*')*)?/?>`)
+
 func parseInline(value string) []inline {
 	items := make([]inline, 0, 8)
 
-	for i := 0; i < len(value); {
-		switch value[i] {
-		case '\\':
-			if i+1 < len(value) && value[i+1] == '\n' {
-				items = append(items, inline{kind: inlineHardBreak})
-				i += 2
-				continue
-			}
-
-			if i+1 < len(value) && isEscapable(value[i+1]) {
-				items = append(items, inline{kind: inlineText, text: value[i+1 : i+2]})
-				i += 2
-				continue
-			}
-
-			items = append(items, inline{kind: inlineText, text: "\\"})
-			i++
-
-		case '`':
-			if item, next, ok := parseCodeSpan(value, i); ok {
-				items = append(items, item)
-				i = next
-				continue
-			}
-
-			count := runLength(value, i, '`')
-			items = append(items, inline{kind: inlineText, text: value[i : i+count]})
-			i += count
-
-		case '*', '_':
-			if item, next, ok := parseDelimiter(value, i); ok {
-				items = append(items, item)
-				i = next
-				continue
-			}
-
-			items = append(items, inline{kind: inlineText, text: value[i : i+1]})
-			i++
-
-		case '!':
-			if i+1 < len(value) && value[i+1] == '[' {
-				if item, next, ok := parseLink(value, i); ok {
-					items = append(items, item)
-					i = next
-					continue
+	for index := 0; index < len(value); {
+		if value[index] == '\n' {
+			// Trailing spaces before a break would render inside the paragraph.
+			if last := len(items) - 1; last >= 0 && items[last].kind == inlineText {
+				items[last].text = strings.TrimRight(items[last].text, " ")
+				if items[last].text == "" {
+					items = items[:last]
 				}
 			}
 
-			items = append(items, inline{kind: inlineText, text: "!"})
-			i++
-
-		case '[':
-			if item, next, ok := parseLink(value, i); ok {
-				items = append(items, item)
-				i = next
-				continue
-			}
-
-			items = append(items, inline{kind: inlineText, text: "["})
-			i++
-
-		case '<':
-			if item, next, ok := parseHTMLInline(value, i); ok {
-				items = append(items, item)
-				i = next
-				continue
-			}
-
-			items = append(items, inline{kind: inlineText, text: "<"})
-			i++
-
-		case '&':
-			if text, next, ok := parseEntity(value, i); ok {
-				items = append(items, inline{kind: inlineText, text: text})
-				i = next
-				continue
-			}
-
-			items = append(items, inline{kind: inlineText, text: "&"})
-			i++
-
-		case '\n':
-			var spaces int
-			items, spaces = trimTrailingSpaces(items)
-
-			if spaces >= 2 {
-				items = append(items, inline{kind: inlineHardBreak})
-			} else {
-				items = append(items, inline{kind: inlineSoftBreak})
-			}
-
-			i++
-
-		default:
-			start := i
-			i++
-
-			for i < len(value) && !isInlineSpecial(value[i]) {
-				i++
-			}
-
-			items = append(items, inline{kind: inlineText, text: value[start:i]})
+			items = append(items, inline{kind: inlineBreak})
+			index++
+			continue
 		}
+
+		if item, next, ok := parseAtom(value, index); ok {
+			items = append(items, item)
+			index = next
+			continue
+		}
+
+		// A malformed construct is literal text.
+		start := index
+		index++
+		for index < len(value) && !isInlineSpecial(value[index]) {
+			index++
+		}
+		items = append(items, inline{kind: inlineText, text: value[start:index]})
 	}
 
 	return items
 }
 
-func parseCodeSpan(value string, start int) (inline, int, bool) {
-	count := runLength(value, start, '`')
-	if count == 0 {
-		return inline{}, start, false
+// parseAtom parses one inline construct at index. A false result means the
+// character carries no syntax here and is literal text.
+func parseAtom(value string, index int) (inline, int, bool) {
+	switch value[index] {
+	case '\\':
+		if index+1 >= len(value) {
+			return inline{}, 0, false
+		}
+		switch next := value[index+1]; {
+		case next == '\n':
+			return inline{kind: inlineBreak}, index + 2, true
+		case isEscapable(next):
+			return inline{kind: inlineText, text: value[index+1 : index+2]}, index + 2, true
+		}
+
+	case '`':
+		count := runLength(value, index, '`')
+		end := skipCodeSpan(value, index)
+		if end == index+count {
+			// No closing run: the whole opening run is literal, so its
+			// second backtick cannot open a span.
+			return inline{kind: inlineText, text: value[index:end]}, end, true
+		}
+
+		content := value[index+count : end-count]
+		content = strings.ReplaceAll(content, "\n", " ")
+
+		if len(content) >= 2 && content[0] == ' ' && content[len(content)-1] == ' ' && strings.TrimSpace(content) != "" {
+			content = content[1 : len(content)-1]
+		}
+
+		return inline{kind: inlineCode, text: content}, end, true
+
+	case '*', '_':
+		return parseDelimiter(value, index)
+
+	case '!', '[':
+		return parseLink(value, index)
+
+	case '<':
+		return parseHTMLInline(value, index)
+
+	case '&':
+		if text, next, ok := parseEntity(value, index); ok {
+			return inline{kind: inlineText, text: text}, next, true
+		}
 	}
+
+	return inline{}, 0, false
+}
+
+// skipCodeSpan returns the position just past the code span at start. Without
+// a closing run it returns the position just past the opening backtick run.
+func skipCodeSpan(value string, start int) int {
+	count := runLength(value, start, '`')
 
 	for index := start + count; index < len(value); {
 		if value[index] != '`' {
@@ -153,22 +132,14 @@ func parseCodeSpan(value string, start int) (inline, int, bool) {
 		}
 
 		run := runLength(value, index, '`')
-		if run != count {
-			index += run
-			continue
+		if run == count {
+			return index + count
 		}
 
-		content := value[start+count : index]
-		content = strings.ReplaceAll(content, "\n", " ")
-
-		if len(content) >= 2 && content[0] == ' ' && content[len(content)-1] == ' ' && strings.TrimSpace(content) != "" {
-			content = content[1 : len(content)-1]
-		}
-
-		return inline{kind: inlineCode, text: content}, index + count, true
+		index += run
 	}
 
-	return inline{}, start, false
+	return start + count
 }
 
 func parseDelimiter(value string, start int) (inline, int, bool) {
@@ -179,66 +150,53 @@ func parseDelimiter(value string, start int) (inline, int, bool) {
 	next := nextRune(value, start+count)
 
 	if !delimiterCanOpen(char, previous, next) {
-		return inline{}, start, false
+		return inline{}, 0, false
 	}
 
 	if count >= 2 {
 		if end, ok := findClosingDelimiter(value, start+2, char, 2); ok {
-			inner := parseInline(value[start+2 : end])
-
-			return inline{kind: inlineStrong, children: inner}, end + 2, true
+			return inline{kind: inlineStrong, children: parseInline(value[start+2 : end])}, end + 2, true
 		}
 	}
 
 	if end, ok := findClosingDelimiter(value, start+count, char, 1); ok {
-		inner := parseInline(value[start+1 : end])
-
-		return inline{kind: inlineEmphasis, children: inner}, end + 1, true
+		return inline{kind: inlineEmphasis, children: parseInline(value[start+1 : end])}, end + 1, true
 	}
 
-	return inline{}, start, false
+	return inline{}, 0, false
 }
 
+// findClosingDelimiter finds a closing run of char. A single-character
+// delimiter must close on a run of exactly one, leaving a double run to strong.
 func findClosingDelimiter(value string, start int, char byte, need int) (int, bool) {
 	for index := start; index < len(value); {
 		switch value[index] {
 		case '\\':
 			index += 2
-			continue
 
 		case '`':
-			if _, next, ok := parseCodeSpan(value, index); ok {
-				index = next
-				continue
-			}
-
-			index += runLength(value, index, '`')
-			continue
+			index = skipCodeSpan(value, index)
 
 		case char:
 			run := runLength(value, index, char)
 
-			if need == 1 {
-				if run == 1 && delimiterCanClose(char, previousRune(value, index), nextRune(value, index+1)) {
-					return index, true
-				}
-
+			if need == 1 && run != 1 {
 				index += run
 				continue
 			}
 
-			if run >= 2 {
-				closeAt := index + run - 2
-				if delimiterCanClose(char, previousRune(value, closeAt), nextRune(value, closeAt+2)) {
+			if run >= need {
+				closeAt := index + run - need
+				if delimiterCanClose(char, previousRune(value, closeAt), nextRune(value, closeAt+need)) {
 					return closeAt, true
 				}
 			}
 
 			index += run
-			continue
-		}
 
-		index++
+		default:
+			index++
+		}
 	}
 
 	return 0, false
@@ -252,20 +210,19 @@ func parseLink(value string, start int) (inline, int, bool) {
 	}
 
 	if bracket >= len(value) || value[bracket] != '[' {
-		return inline{}, start, false
+		return inline{}, 0, false
 	}
 
 	close, ok := findClosingBracket(value, bracket)
 	if !ok || close+1 >= len(value) || value[close+1] != '(' {
-		return inline{}, start, false
+		return inline{}, 0, false
 	}
 
 	destination, title, next, ok := parseLinkTarget(value, close+2)
 	if !ok {
-		return inline{}, start, false
+		return inline{}, 0, false
 	}
 
-	children := parseInline(value[bracket+1 : close])
 	kind := inlineLink
 	if image {
 		kind = inlineImage
@@ -275,7 +232,7 @@ func parseLink(value string, start int) (inline, int, bool) {
 		kind:     kind,
 		url:      destination,
 		title:    title,
-		children: children,
+		children: parseInline(value[bracket+1 : close]),
 	}, next, true
 }
 
@@ -287,10 +244,7 @@ func findClosingBracket(value string, open int) (int, bool) {
 		case '\\':
 			index++
 		case '`':
-			if _, next, ok := parseCodeSpan(value, index); ok {
-				index = next - 1
-				continue
-			}
+			index = skipCodeSpan(value, index) - 1
 		case '[':
 			depth++
 		case ']':
@@ -304,159 +258,109 @@ func findClosingBracket(value string, open int) (int, bool) {
 	return 0, false
 }
 
-func parseLinkTarget(value string, start int) (string, string, int, bool) {
-	index := skipInlineSpaces(value, start)
-
-	var destination string
+func parseLinkTarget(value string, start int) (destination, title string, next int, ok bool) {
+	index := skipSpaces(value, start)
 
 	if index < len(value) && value[index] == '<' {
-		end := index + 1
-		for end < len(value) && value[end] != '>' {
-			if value[end] == '\\' && end+1 < len(value) {
-				end++
-			}
-			end++
-		}
-
-		if end >= len(value) {
-			return "", "", start, false
+		end, ok := scanDelimited(value, index+1, '>')
+		if !ok {
+			return "", "", 0, false
 		}
 
 		destination = unescapeLinkText(value[index+1 : end])
 		index = end + 1
 	} else {
-		var builder strings.Builder
-		depth := 1
-
-		for index < len(value) {
-			char := value[index]
-
-			if char == '\\' && index+1 < len(value) {
-				builder.WriteByte(value[index+1])
-				index += 2
-				continue
-			}
-
-			if char == '(' {
-				depth++
-				builder.WriteByte(char)
-				index++
-				continue
-			}
-
-			if char == ')' {
-				if depth == 1 {
-					break
-				}
-
-				depth--
-				builder.WriteByte(char)
-				index++
-				continue
-			}
-
-			if char == ' ' || char == '\t' || char == '\n' {
-				break
-			}
-
-			builder.WriteByte(char)
-			index++
-		}
-
-		destination = builder.String()
+		end := scanLinkDestination(value, index)
+		destination = unescapeLinkText(value[index:end])
+		index = end
 	}
 
-	index = skipInlineSpaces(value, index)
-	title := ""
-
+	index = skipSpaces(value, index)
 	if index < len(value) && (value[index] == '"' || value[index] == '\'' || value[index] == '(') {
-		opening := value[index]
-		closing := opening
-		if opening == '(' {
+		closing := value[index]
+		if closing == '(' {
 			closing = ')'
 		}
 
-		index++
-		begin := index
-
-		for index < len(value) && value[index] != closing {
-			if value[index] == '\\' && index+1 < len(value) {
-				index++
-			}
-			index++
+		end, ok := scanDelimited(value, index+1, closing)
+		if !ok {
+			return "", "", 0, false
 		}
 
-		if index >= len(value) {
-			return "", "", start, false
-		}
-
-		title = unescapeLinkText(value[begin:index])
-		index++
-		index = skipInlineSpaces(value, index)
+		title = unescapeLinkText(value[index+1 : end])
+		index = skipSpaces(value, end+1)
 	}
 
 	if index >= len(value) || value[index] != ')' {
-		return "", "", start, false
+		return "", "", 0, false
 	}
 
 	return html.UnescapeString(destination), html.UnescapeString(title), index + 1, true
 }
 
+// scanDelimited returns the index of the next unescaped closing byte after
+// start.
+func scanDelimited(value string, start int, closing byte) (int, bool) {
+	for index := start; index < len(value); index++ {
+		switch value[index] {
+		case '\\':
+			index++
+		case closing:
+			return index, true
+		}
+	}
+
+	return 0, false
+}
+
+// scanLinkDestination returns the end of a bare (non-angle) destination.
+// Nested parentheses are part of the destination; whitespace ends it.
+func scanLinkDestination(value string, index int) int {
+	depth := 0
+
+	for index < len(value) {
+		switch value[index] {
+		case '\\':
+			if index+1 < len(value) {
+				index++
+			}
+		case '(':
+			depth++
+		case ')':
+			if depth == 0 {
+				return index
+			}
+			depth--
+		case ' ', '\t', '\n':
+			return index
+		}
+
+		index++
+	}
+
+	return index
+}
+
 func parseEntity(value string, start int) (string, int, bool) {
 	end := strings.IndexByte(value[start:], ';')
 	if end < 0 || end > 32 {
-		return "", start, false
+		return "", 0, false
 	}
 
 	candidate := value[start : start+end+1]
-	decoded := html.UnescapeString(candidate)
-
-	if decoded == candidate {
-		return "", start, false
+	if decoded := html.UnescapeString(candidate); decoded != candidate {
+		return decoded, start + end + 1, true
 	}
 
-	return decoded, start + end + 1, true
+	return "", 0, false
 }
 
-func trimTrailingSpaces(items []inline) ([]inline, int) {
-	if len(items) == 0 || items[len(items)-1].kind != inlineText {
-		return items, 0
-	}
-
-	last := &items[len(items)-1]
-	trimmed := strings.TrimRight(last.text, " ")
-	spaces := len(last.text) - len(trimmed)
-	last.text = trimmed
-
-	if last.text == "" {
-		items = items[:len(items)-1]
-	}
-
-	return items, spaces
+func delimiterCanOpen(char byte, previous, next rune) bool {
+	return next != 0 && !unicode.IsSpace(next) && !(char == '_' && isWordRune(previous) && isWordRune(next))
 }
 
-func delimiterCanOpen(char byte, previous rune, next rune) bool {
-	if next == 0 || unicode.IsSpace(next) {
-		return false
-	}
-
-	if char == '_' && isWordRune(previous) && isWordRune(next) {
-		return false
-	}
-
-	return true
-}
-
-func delimiterCanClose(char byte, previous rune, next rune) bool {
-	if previous == 0 || unicode.IsSpace(previous) {
-		return false
-	}
-
-	if char == '_' && isWordRune(previous) && isWordRune(next) {
-		return false
-	}
-
-	return true
+func delimiterCanClose(char byte, previous, next rune) bool {
+	return previous != 0 && !unicode.IsSpace(previous) && !(char == '_' && isWordRune(previous) && isWordRune(next))
 }
 
 func isWordRune(value rune) bool {
@@ -468,12 +372,7 @@ func isEscapable(value byte) bool {
 }
 
 func isInlineSpecial(value byte) bool {
-	switch value {
-	case '\\', '`', '*', '_', '[', '!', '<', '&', '\n':
-		return true
-	}
-
-	return false
+	return strings.IndexByte("\\`*_[!<&\n", value) >= 0
 }
 
 func unescapeLinkText(value string) string {
@@ -490,23 +389,6 @@ func unescapeLinkText(value string) string {
 	}
 
 	return builder.String()
-}
-
-func skipInlineSpaces(value string, index int) int {
-	for index < len(value) && (value[index] == ' ' || value[index] == '\t' || value[index] == '\n') {
-		index++
-	}
-
-	return index
-}
-
-func runLength(value string, start int, char byte) int {
-	end := start
-	for end < len(value) && value[end] == char {
-		end++
-	}
-
-	return end - start
 }
 
 func previousRune(value string, index int) rune {
@@ -530,69 +412,42 @@ func nextRune(value string, index int) rune {
 }
 
 func parseHTMLInline(value string, start int) (inline, int, bool) {
-	if start >= len(value) || value[start] != '<' {
-		return inline{}, start, false
-	}
-
 	if strings.HasPrefix(value[start:], "<!--") {
 		end := strings.Index(value[start+4:], "-->")
 		if end < 0 {
-			return inline{}, start, false
+			return inline{}, 0, false
 		}
 		end += start + 7
 		return inline{kind: inlineHTML, text: value[start:end]}, end, true
 	}
 
-	end := start + 1
-	var quote byte
-	for end < len(value) {
-		char := value[end]
-		if quote != 0 {
-			if char == quote {
-				quote = 0
+	match := inlineTagPattern.FindStringIndex(value[start:])
+	if match == nil {
+		return inline{}, 0, false
+	}
+	return inline{kind: inlineHTML, text: value[start : start+match[1]]}, start + match[1], true
+}
+
+// plainInlines strips inline syntax down to readable text. Breaks become
+// spaces; images and links keep the text they wrap.
+func plainInlines(inlines []inline) string {
+	var builder strings.Builder
+
+	var walk func([]inline)
+	walk = func(items []inline) {
+		for _, item := range items {
+			switch item.kind {
+			case inlineText, inlineCode:
+				builder.WriteString(item.text)
+			case inlineBreak:
+				builder.WriteByte(' ')
+			default:
+				walk(item.children)
 			}
-		} else if char == '\'' || char == '"' {
-			quote = char
-		} else if char == '>' {
-			break
-		}
-		end++
-	}
-	if end >= len(value) {
-		return inline{}, start, false
-	}
-
-	raw := value[start : end+1]
-	inner := raw[1 : len(raw)-1]
-	if inner == "" {
-		return inline{}, start, false
-	}
-	if inner[0] == '/' {
-		inner = inner[1:]
-	}
-	if inner == "" || !isHTMLNameStart(inner[0]) {
-		return inline{}, start, false
-	}
-
-	nameEnd := 1
-	for nameEnd < len(inner) && isHTMLNameChar(inner[nameEnd]) {
-		nameEnd++
-	}
-	if nameEnd < len(inner) {
-		switch inner[nameEnd] {
-		case '>', '/', ' ', '\t', '\n', '\r':
-		default:
-			return inline{}, start, false
 		}
 	}
 
-	return inline{kind: inlineHTML, text: raw}, end + 1, true
-}
+	walk(inlines)
 
-func isHTMLNameStart(char byte) bool {
-	return char >= 'a' && char <= 'z' || char >= 'A' && char <= 'Z'
-}
-
-func isHTMLNameChar(char byte) bool {
-	return isHTMLNameStart(char) || (char >= '0' && char <= '9') || char == '-'
+	return strings.Join(strings.Fields(builder.String()), " ")
 }

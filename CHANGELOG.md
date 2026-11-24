@@ -2,6 +2,10 @@
 
 ## 1.1.0
 
+- Markdown containers close only at block boundaries, so fences and nested containers inside list items are preserved; an indented `:::` that belongs to list content is text.
+- Markdown loose lists wrap every direct item paragraph in `<p>`; tight lists keep the first paragraph inline.
+- Markdown list continuation and code indentation honour tab stops when stripping indentation.
+- An unclosed fenced code block inside a container keeps its trailing blank lines, matching the behaviour at the top level.
 - Page links in Markdown (`.md`, `.html`, extensionless) are rewritten to the page URL of the current layout; anchors, queries, images and other file extensions are left alone.
 - `nav[].active_match` is honoured: a nav entry is active when the page URL starts with the given prefix.
 - Previous and next links include a sidebar group’s own link when it has one.
