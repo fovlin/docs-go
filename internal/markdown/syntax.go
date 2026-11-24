@@ -290,10 +290,7 @@ func tableStart(lines []string, index int) (header, aligns []string, ok bool) {
 
 func splitTableRow(line string) []string {
 	line = strings.TrimSpace(line)
-
-	if strings.HasPrefix(line, "|") {
-		line = line[1:]
-	}
+	line = strings.TrimPrefix(line, "|")
 	// A trailing pipe is a border only when no backslash escapes it.
 	if strings.HasSuffix(line, "|") {
 		backslashes := 0
