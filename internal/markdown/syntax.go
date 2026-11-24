@@ -291,14 +291,12 @@ func isTableRaw(line string) bool {
 func splitTableRow(line string) []string {
 	line = strings.TrimSpace(line)
 
-	line = strings.Trim(line, "|")
-
 	cells := make([]string, 0, 4)
 	var builder strings.Builder
 	for index := 0; index < len(line); index++ {
 		value := line[index]
-
-		if value == '\\' && index+1 < len(line) {
+		switch {
+		case value == '\\' && index+1 < len(line):
 			if line[index+1] == '|' {
 				builder.WriteByte('|')
 			} else {
@@ -306,20 +304,19 @@ func splitTableRow(line string) []string {
 				builder.WriteByte(line[index+1])
 			}
 			index++
-			continue
-		}
 
-		if value == '|' {
+		// skip prefix and suffix with '|'
+		case (index == 0 || index == len(line)-1) && value == '|':
+			continue
+		case value == '|':
 			cells = append(cells, strings.TrimSpace(builder.String()))
 			builder.Reset()
-			continue
+		default:
+			builder.WriteByte(value)
 		}
-
-		builder.WriteByte(value)
 	}
 
 	cells = append(cells, strings.TrimSpace(builder.String()))
-
 	return cells
 }
 

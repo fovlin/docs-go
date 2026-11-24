@@ -146,3 +146,27 @@ func TestMatchBlockStart(t *testing.T) {
 		t.Fatal("plain paragraph matched a block start")
 	}
 }
+
+func TestSplitTable(t *testing.T) {
+	testTab := map[string][]string{
+		"|| a | b |":   {"", "a", "b"},
+		"| a | b ||":   {"a", "b", ""},
+		"|| a | b ||":  {"", "a", "b", ""},
+		"| | a | b ||": {"", "a", "b", ""},
+		"| a \\|":      {"a |"},
+		"| a \\| |":    {"a |"},
+	}
+
+	for input, stand := range testTab {
+		relTab := splitTableRow(input)
+		if len(stand) != len(relTab) {
+			t.Fatalf("error len, except: %v, find: %v", len(stand), len(relTab))
+		}
+
+		for index, str := range stand {
+			if relTab[index] != str {
+				t.Fatalf("error in test %v, except: %v, find: %v", input, str, relTab[index])
+			}
+		}
+	}
+}
