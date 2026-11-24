@@ -2,7 +2,7 @@
 
 ## 1.1.0
 
-- Markdown containers close only at block boundaries, so fences and nested containers inside list items are preserved; an indented `:::` that belongs to list content is text.
+- Markdown containers close only at block boundaries, so fences and nested containers inside list items are preserved; an indented closing `:::` that belongs to list content is text.
 - Markdown loose lists wrap every direct item paragraph in `<p>`; tight lists keep the first paragraph inline.
 - Markdown list continuation and code indentation honour tab stops when stripping indentation.
 - An unclosed fenced code block inside a container keeps its trailing blank lines, matching the behaviour at the top level.

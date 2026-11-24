@@ -15,7 +15,7 @@ new paragraph
 
 ## Headings
 
-ATX headings from `#` to `######`; a space after the hashes is required.
+ATX headings from `#` to `######`; a space, tab or end of line after the hashes.
 
 ```md
 # Heading 1
@@ -157,11 +157,12 @@ Press <kbd>Ctrl</kbd> + <kbd>C</kbd>.
   a plain newline as a space.
 - Indented code can interrupt a paragraph.
 - A blank line starts a new block; there is no lazy blockquote continuation.
-- A table header or body row ends at the next block opener rather than at a
-  fixed character test.
+- A table body row ends at the next block opener rather than at a fixed
+  character test; a header or body row that starts another block is not table
+  text.
 - Tables split cells before inline parsing, so `|` inside code spans is not protected.
-- A container closes only at a block boundary; a `:::` indented into list-item
-  content is content, not a terminator.
+- A container closes only at a block boundary; a closing `:::` indented into
+  list-item content is content, not a terminator.
 - Emphasis matching is greedy and does not implement CommonMark's delimiter-stack rules;
   malformed delimiter runs degrade to text.
 - Only ATX headings are supported; no setext headings, autolinks, reference links,
