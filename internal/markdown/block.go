@@ -17,10 +17,10 @@ func (p *parser) parseBlock(lines []string, spec blockSpec) block {
 	switch spec.kind {
 	case blockCode:
 		if spec.fenced {
-			code, language := parseFenceRange(lines, spec.start, spec.end, spec.fenceChar, spec.fenceLength, spec.fenceInfo)
+			code, language := parseFenceRange(lines, spec)
 			return block{kind: blockCode, text: code, language: language}
 		}
-		return block{kind: blockCode, text: parseIndentedCodeRange(lines, spec.start, spec.end)}
+		return block{kind: blockCode, text: parseIndentedCodeRange(lines, spec)}
 
 	case blockHeading:
 		inlines := parseInline(spec.headingText)
@@ -73,22 +73,22 @@ func (p *parser) parseBlock(lines []string, spec blockSpec) block {
 	}
 }
 
-func parseFenceRange(lines []string, start, end int, char byte, length int, info string) (string, string) {
+func parseFenceRange(lines []string, spec blockSpec) (string, string) {
 	language := ""
-	if fields := strings.Fields(info); len(fields) > 0 {
+	if fields := strings.Fields(spec.fenceInfo); len(fields) > 0 {
 		language = strings.ToLower(fields[0])
 	}
 
-	contentEnd := end
-	if contentEnd > start && fenceClose(lines[contentEnd], char, length) {
+	contentEnd := spec.end
+	if contentEnd > spec.start && fenceClose(lines[contentEnd], spec.fenceChar, spec.fenceLength) {
 		contentEnd--
 	} else if contentEnd == len(lines)-1 && lines[contentEnd] == "" {
 		contentEnd--
 	}
 
-	indent := blockIndent(lines[start])
-	content := make([]string, 0, contentEnd-start)
-	for i := start + 1; i <= contentEnd; i++ {
+	indent := blockIndent(lines[spec.start])
+	content := make([]string, 0, contentEnd-spec.start)
+	for i := spec.start + 1; i <= contentEnd; i++ {
 		content = append(content, stripIndent(lines[i], indent))
 	}
 
@@ -100,9 +100,9 @@ func parseFenceRange(lines []string, start, end int, char byte, length int, info
 	return code, language
 }
 
-func parseIndentedCodeRange(lines []string, start, end int) string {
-	content := make([]string, 0, end-start+1)
-	for i := start; i <= end; i++ {
+func parseIndentedCodeRange(lines []string, spec blockSpec) string {
+	content := make([]string, 0, spec.end-spec.start+1)
+	for i := spec.start; i <= spec.end; i++ {
 		if strings.TrimSpace(lines[i]) == "" {
 			content = append(content, "")
 			continue
